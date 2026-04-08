@@ -43,7 +43,7 @@ public class CharacterClassController {
 
         resource.add(linkTo(methodOn(CharacterClassController.class).getClassById(id)).withSelfRel());
 
-        // Ajustado para remover o aviso amarelo do null
+
         resource.add(linkTo(methodOn(CharacterClassController.class).getAllClasses(Pageable.unpaged(), null)).withRel("all-classes"));
 
         return ResponseEntity.ok(resource);

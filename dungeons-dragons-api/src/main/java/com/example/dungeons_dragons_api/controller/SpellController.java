@@ -44,7 +44,7 @@ public class SpellController {
 
         EntityModel<Spell> resource = EntityModel.of(spell);
         resource.add(linkTo(methodOn(SpellController.class).getSpellById(id)).withSelfRel());
-        resource.add(linkTo(methodOn(SpellController.class).getAllSpells(null, null)).withRel("all-spells"));
+        resource.add(linkTo(methodOn(SpellController.class).getAllSpells(Pageable.unpaged(), null)).withRel("all-spells"));
 
         return ResponseEntity.ok(resource);
     }
