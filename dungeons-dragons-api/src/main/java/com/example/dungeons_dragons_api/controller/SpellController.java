@@ -23,7 +23,7 @@ public class SpellController {
     @Autowired
     private SpellRepository repository;
 
-    // 1. LISTAR TODAS (Paginado + HATEOAS)
+
     @GetMapping
     public ResponseEntity<PagedModel<EntityModel<Spell>>> getAllSpells(
             Pageable pageable,
@@ -36,7 +36,7 @@ public class SpellController {
         ));
     }
 
-    // 2. BUSCAR POR ID (HATEOAS)
+
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Spell>> getSpellById(@PathVariable Long id) {
         Spell spell = repository.findById(id)
@@ -49,7 +49,7 @@ public class SpellController {
         return ResponseEntity.ok(resource);
     }
 
-    // 3. CRIAR NOVA (Validado + HATEOAS)
+
     @PostMapping
     public ResponseEntity<EntityModel<Spell>> createSpell(@RequestBody @Valid Spell spell) {
         Spell savedSpell = repository.save(spell);
@@ -60,7 +60,7 @@ public class SpellController {
         return new ResponseEntity<>(resource, HttpStatus.CREATED);
     }
 
-    // 4. ATUALIZAR (Validado + HATEOAS)
+
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<Spell>> updateSpell(@PathVariable Long id, @RequestBody @Valid Spell spellDetails) {
         Spell spell = repository.findById(id)
@@ -79,7 +79,7 @@ public class SpellController {
         return ResponseEntity.ok(resource);
     }
 
-    // 5. DELETAR
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSpell(@PathVariable Long id) {
         Spell spell = repository.findById(id)
@@ -89,7 +89,7 @@ public class SpellController {
         return ResponseEntity.noContent().build();
     }
 
-    // EXTRA: BUSCA PERSONALIZADA (Requisito 3.4)
+
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByName(
             @RequestParam String name,

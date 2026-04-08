@@ -4,12 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 import org.springframework.hateoas.RepresentationModel;
 
 @Entity
 @Table(name = "tb_subclasses")
-@Data
 public class Subclass extends RepresentationModel<Subclass> {
 
     @Id
@@ -24,8 +22,21 @@ public class Subclass extends RepresentationModel<Subclass> {
     private String description;
 
     @ManyToOne
-    @JoinColumn(name = "class_id") // Cria uma chave estrangeira no banco
+    @JoinColumn(name = "class_id")
     @NotNull(message = "A classe pai é obrigatória")
-    @JsonIgnoreProperties("subclasses") // Evita que o JSON entre em loop infinito
+    @JsonIgnoreProperties("subclasses")
     private CharacterClass characterClass;
+
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public CharacterClass getCharacterClass() { return characterClass; }
+    public void setCharacterClass(CharacterClass characterClass) { this.characterClass = characterClass; }
 }

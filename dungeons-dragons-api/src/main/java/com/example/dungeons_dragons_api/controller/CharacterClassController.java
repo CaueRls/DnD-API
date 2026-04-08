@@ -85,4 +85,4 @@ public class CharacterClassController {
         repository.delete(charClass);
         return ResponseEntity.noContent().build();
     }
-} // <--- Verifique se essa última chave está presente no seu arquivo!
+}

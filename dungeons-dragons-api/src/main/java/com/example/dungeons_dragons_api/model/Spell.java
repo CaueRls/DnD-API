@@ -2,12 +2,10 @@ package com.example.dungeons_dragons_api.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
-import lombok.Data;
 import org.springframework.hateoas.RepresentationModel;
 
 @Entity
 @Table(name = "tb_spells")
-@Data // O Lombok cria os métodos getLevel, setLevel, etc., automaticamente
 public class Spell extends RepresentationModel<Spell> {
 
     @Id
@@ -18,16 +16,31 @@ public class Spell extends RepresentationModel<Spell> {
     @Size(min = 3, max = 100)
     private String name;
 
-    @NotNull(message = "O nível da magia deve ser informado")
-    @Min(value = 0, message = "O nível mínimo é 0 (Truque)")
-    @Max(value = 9, message = "O nível máximo é 9")
+    @NotNull(message = "O nível da magia é obrigatório")
+    @Min(0) @Max(9)
     private Integer level;
 
     @NotBlank(message = "A descrição não pode estar vazia")
-    @Column(columnDefinition = "TEXT") // Essencial para textos longos de D&D
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Enumerated(EnumType.STRING)
     @NotNull(message = "A escola de magia é obrigatória")
     private MagicSchool school;
+
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public Integer getLevel() { return level; }
+    public void setLevel(Integer level) { this.level = level; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public MagicSchool getSchool() { return school; }
+    public void setSchool(MagicSchool school) { this.school = school; }
 }

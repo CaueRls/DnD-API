@@ -22,7 +22,7 @@ public class MonsterController {
     @Autowired
     private MonsterRepository repository;
 
-    // 1. LISTAR TODOS (Paginado + HATEOAS)
+
     @GetMapping
     public ResponseEntity<PagedModel<EntityModel<Monster>>> getAllMonsters(
             Pageable pageable,
@@ -35,7 +35,7 @@ public class MonsterController {
         ));
     }
 
-    // 2. BUSCAR POR ID
+
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Monster>> getMonsterById(@PathVariable Long id) {
         Monster monster = repository.findById(id)
@@ -48,7 +48,7 @@ public class MonsterController {
         return ResponseEntity.ok(resource);
     }
 
-    // 3. CRIAR (Salva Monstro e Stats juntos devido ao Cascade)
+
     @PostMapping
     public ResponseEntity<EntityModel<Monster>> createMonster(@RequestBody @Valid Monster monster) {
         Monster savedMonster = repository.save(monster);
@@ -59,7 +59,7 @@ public class MonsterController {
         return new ResponseEntity<>(resource, HttpStatus.CREATED);
     }
 
-    // 4. ATUALIZAR
+
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<Monster>> updateMonster(@PathVariable Long id, @RequestBody @Valid Monster details) {
         Monster monster = repository.findById(id)
@@ -76,7 +76,7 @@ public class MonsterController {
         return ResponseEntity.ok(resource);
     }
 
-    // 5. DELETAR
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMonster(@PathVariable Long id) {
         Monster monster = repository.findById(id)
