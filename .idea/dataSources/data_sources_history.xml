@@ -8,7 +8,7 @@
       <driver-ref>h2.unified</driver-ref>
       <synchronize>true</synchronize>
       <imported>true</imported>
-      <remarks>C:/Users/t1396di/IdeaProjects/DnD-API/dungeons-dragons-api/src/main/resources/application-dev.properties</remarks>
+      <remarks>C:/Users/Cauê/IdeaProjects/DnD-API/dungeons-dragons-api/src/main/resources/application-dev.properties</remarks>
       <jdbc-driver>org.h2.Driver</jdbc-driver>
       <jdbc-url>jdbc:h2:mem:dnddb</jdbc-url>
       <jdbc-additional-properties>
@@ -33,7 +33,7 @@
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <imported>true</imported>
-      <remarks>C:/Users/t1396di/IdeaProjects/DnD-API/dungeons-dragons-api/src/main/resources/application-prod.properties</remarks>
+      <remarks>C:/Users/Cauê/IdeaProjects/DnD-API/dungeons-dragons-api/src/main/resources/application-prod.properties</remarks>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
       <jdbc-url>jdbc:postgresql://seu-link-do-render.com/banco</jdbc-url>
       <jdbc-additional-properties>
