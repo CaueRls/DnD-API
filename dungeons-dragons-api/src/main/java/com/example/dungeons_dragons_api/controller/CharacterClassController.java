@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,52 +29,39 @@ public class CharacterClassController {
     @Autowired
     private CharacterClassRepository repository;
 
-    @Operation(
-            summary = "Lista todas as classes",
-            description = "Retorna uma lista paginada com todas as classes de personagem cadastradas."
-    )
+    private EntityModel<CharacterClass> toModel(CharacterClass c) {
+        return EntityModel.of(c,
+                linkTo(methodOn(CharacterClassController.class).getClassById(c.getId())).withSelfRel(),
+                linkTo(methodOn(CharacterClassController.class).updateClass(c.getId(), null)).withRel("update"),
+                linkTo(methodOn(CharacterClassController.class).deleteClass(c.getId())).withRel("delete"),
+                linkTo(methodOn(CharacterClassController.class).getAllClasses(Pageable.unpaged(), null)).withRel("all-classes")
+        );
+    }
+
+    @Operation(summary = "Lista todas as classes", description = "Retorna uma lista paginada com todas as classes de personagem cadastradas.")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
     public ResponseEntity<PagedModel<EntityModel<CharacterClass>>> getAllClasses(
-            Pageable pageable,
-            PagedResourcesAssembler<CharacterClass> assembler) {
-
-        Page<CharacterClass> classes = repository.findAll(pageable);
-        return ResponseEntity.ok(assembler.toModel(classes, charClass ->
-                EntityModel.of(charClass, linkTo(methodOn(CharacterClassController.class).getClassById(charClass.getId())).withSelfRel())
-        ));
+            Pageable pageable, PagedResourcesAssembler<CharacterClass> assembler) {
+        return ResponseEntity.ok(assembler.toModel(repository.findAll(pageable), this::toModel));
     }
 
-    @Operation(
-            summary = "Busca uma classe pelo ID",
-            description = "Retorna os detalhes de uma classe de personagem específica."
-    )
+    @Operation(summary = "Busca uma classe pelo ID", description = "Retorna os detalhes de uma classe de personagem específica.")
     @ApiResponse(responseCode = "200", description = "Classe encontrada")
     @ApiResponse(responseCode = "404", description = "Classe não encontrada")
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<CharacterClass>> getClassById(@PathVariable Long id) {
-        CharacterClass charClass = repository.findById(id)
+        CharacterClass c = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Classe não encontrada com o ID: " + id));
-
-        EntityModel<CharacterClass> resource = EntityModel.of(charClass);
-        resource.add(linkTo(methodOn(CharacterClassController.class).getClassById(id)).withSelfRel());
-        resource.add(linkTo(methodOn(CharacterClassController.class).getAllClasses(Pageable.unpaged(), null)).withRel("all-classes"));
-        return ResponseEntity.ok(resource);
+        return ResponseEntity.ok(toModel(c));
     }
 
-    @Operation(
-            summary = "Cria uma nova classe de personagem",
-            description = "Cadastra uma nova classe. O campo 'hitDie' deve ser um dos valores do enum HitDie (ex: D6, D8, D10, D12)."
-    )
-    @RequestBody(
-            required = true,
-            content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CharacterClass.class),
+    @Operation(summary = "Cria uma nova classe de personagem",
+            description = "Cadastra uma nova classe. O campo 'hitDie' deve ser um dos valores do enum HitDie: D6, D8, D10, D12.")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CharacterClass.class),
                     examples = {
-                            @ExampleObject(
-                                    name = "Mago",
-                                    summary = "Classe Mago",
+                            @ExampleObject(name = "Mago", summary = "Classe Mago",
                                     value = """
                     {
                       "name": "Mago",
@@ -83,11 +69,8 @@ public class CharacterClassController {
                       "description": "Um estudioso da magia arcana que conjura feitiços de poder devastador ou sutileza intrigante.",
                       "spells": []
                     }
-                    """
-                            ),
-                            @ExampleObject(
-                                    name = "Guerreiro",
-                                    summary = "Classe Guerreiro",
+                    """),
+                            @ExampleObject(name = "Guerreiro", summary = "Classe Guerreiro",
                                     value = """
                     {
                       "name": "Guerreiro",
@@ -95,70 +78,55 @@ public class CharacterClassController {
                       "description": "Um mestre do combate marcial, com grande proficiência em armas e armaduras de todos os tipos.",
                       "spells": []
                     }
-                    """
-                            ),
-                            @ExampleObject(
-                                    name = "Clérigo",
-                                    summary = "Classe Clérigo",
+                    """),
+                            @ExampleObject(name = "Clérigo", summary = "Classe Clérigo",
                                     value = """
                     {
                       "name": "Clérigo",
                       "hitDie": "D8",
-                      "description": "Um intermediário entre o mundo mortal e o divino, capaz de curar aliados e destruir inimigos com o poder dos deuses.",
+                      "description": "Intermediário entre o mundo mortal e o divino, capaz de curar aliados e destruir inimigos com poder dos deuses.",
                       "spells": []
                     }
-                    """
-                            )
-                    }
-            )
-    )
+                    """)
+                    }))
     @ApiResponse(responseCode = "201", description = "Classe criada com sucesso")
     @PostMapping
-    public ResponseEntity<EntityModel<CharacterClass>> createClass(
-            @org.springframework.web.bind.annotation.RequestBody @Valid CharacterClass charClass) {
-        CharacterClass savedClass = repository.save(charClass);
-
-        EntityModel<CharacterClass> resource = EntityModel.of(savedClass);
-        resource.add(linkTo(methodOn(CharacterClassController.class).getClassById(savedClass.getId())).withSelfRel());
-        return new ResponseEntity<>(resource, HttpStatus.CREATED);
+    public ResponseEntity<EntityModel<CharacterClass>> createClass(@RequestBody @Valid CharacterClass c) {
+        return new ResponseEntity<>(toModel(repository.save(c)), HttpStatus.CREATED);
     }
 
-    @Operation(
-            summary = "Atualiza uma classe existente",
-            description = "Atualiza todos os campos de uma classe de personagem pelo ID."
-    )
+    @Operation(summary = "Atualiza uma classe existente", description = "Atualiza todos os campos de uma classe de personagem pelo ID.")
     @ApiResponse(responseCode = "200", description = "Classe atualizada com sucesso")
     @ApiResponse(responseCode = "404", description = "Classe não encontrada")
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<CharacterClass>> updateClass(
-            @PathVariable Long id,
-            @org.springframework.web.bind.annotation.RequestBody @Valid CharacterClass details) {
-        CharacterClass charClass = repository.findById(id)
+            @PathVariable Long id, @RequestBody @Valid CharacterClass details) {
+        CharacterClass c = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Classe não encontrada com o ID: " + id));
-
-        charClass.setName(details.getName());
-        charClass.setHitDie(details.getHitDie());
-        charClass.setDescription(details.getDescription());
-        charClass.setSpells(details.getSpells());
-
-        CharacterClass updated = repository.save(charClass);
-        EntityModel<CharacterClass> resource = EntityModel.of(updated);
-        resource.add(linkTo(methodOn(CharacterClassController.class).getClassById(updated.getId())).withSelfRel());
-        return ResponseEntity.ok(resource);
+        c.setName(details.getName());
+        c.setHitDie(details.getHitDie());
+        c.setDescription(details.getDescription());
+        c.setSpells(details.getSpells());
+        return ResponseEntity.ok(toModel(repository.save(c)));
     }
 
-    @Operation(
-            summary = "Remove uma classe de personagem",
-            description = "Deleta permanentemente uma classe pelo ID."
-    )
+    @Operation(summary = "Remove uma classe de personagem", description = "Deleta permanentemente uma classe pelo ID.")
     @ApiResponse(responseCode = "204", description = "Classe removida com sucesso")
     @ApiResponse(responseCode = "404", description = "Classe não encontrada")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteClass(@PathVariable Long id) {
-        CharacterClass charClass = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Classe não encontrada com o ID: " + id));
-
-        repository.delete(charClass);
+        repository.delete(repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Classe não encontrada com o ID: " + id)));
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Busca classes pelo nome",
+            description = "Consulta personalizada: retorna classes cujo nome contenha o termo informado (sem distinção de maiúsculas/minúsculas).")
+    @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
+    @GetMapping("/search")
+    public ResponseEntity<PagedModel<EntityModel<CharacterClass>>> searchByName(
+            @RequestParam String name, Pageable pageable, PagedResourcesAssembler<CharacterClass> assembler) {
+        return ResponseEntity.ok(assembler.toModel(
+                repository.findByNameContainingIgnoreCase(name, pageable), this::toModel));
     }
 }
