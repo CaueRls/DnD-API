@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
@@ -52,7 +53,7 @@ public class MonsterStatsController {
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<MonsterStats>> getStatsById(@PathVariable Long id) {
         MonsterStats s = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Atributos não encontrados com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrado com o ID: " + id));
         return ResponseEntity.ok(toModel(s));
     }
 
@@ -96,7 +97,7 @@ public class MonsterStatsController {
     public ResponseEntity<EntityModel<MonsterStats>> updateStats(
             @PathVariable Long id, @RequestBody @Valid MonsterStats details) {
         MonsterStats s = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Atributos não encontrados com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrado com o ID: " + id));
         s.setStrength(details.getStrength());
         s.setDexterity(details.getDexterity());
         s.setConstitution(details.getConstitution());
@@ -112,7 +113,7 @@ public class MonsterStatsController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStats(@PathVariable Long id) {
         repository.delete(repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Atributos não encontrados com o ID: " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrado com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 

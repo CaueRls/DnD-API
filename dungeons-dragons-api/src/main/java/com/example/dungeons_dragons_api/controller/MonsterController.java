@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
@@ -52,7 +53,7 @@ public class MonsterController {
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Monster>> getMonsterById(@PathVariable Long id) {
         Monster m = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Monstro não encontrado com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Monstro não encontrado com o ID: " + id));
         return ResponseEntity.ok(toModel(m));
     }
 
@@ -108,7 +109,7 @@ public class MonsterController {
     public ResponseEntity<EntityModel<Monster>> updateMonster(
             @PathVariable Long id, @RequestBody @Valid Monster details) {
         Monster m = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Monstro não encontrado com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Monstro não encontrado com o ID: " + id));
         m.setName(details.getName());
         m.setType(details.getType());
         m.setStats(details.getStats());
@@ -121,7 +122,7 @@ public class MonsterController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMonster(@PathVariable Long id) {
         repository.delete(repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Monstro não encontrado com o ID: " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Monstro não encontrado com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 

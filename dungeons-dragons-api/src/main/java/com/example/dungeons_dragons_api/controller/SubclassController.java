@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
@@ -52,7 +53,7 @@ public class SubclassController {
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Subclass>> getSubclassById(@PathVariable Long id) {
         Subclass s = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Subclasse não encontrada com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrado com o ID: " + id));
         return ResponseEntity.ok(toModel(s));
     }
 
@@ -99,7 +100,7 @@ public class SubclassController {
     public ResponseEntity<EntityModel<Subclass>> updateSubclass(
             @PathVariable Long id, @RequestBody @Valid Subclass details) {
         Subclass s = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Subclasse não encontrada com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrado com o ID: " + id));
         s.setName(details.getName());
         s.setDescription(details.getDescription());
         s.setCharacterClass(details.getCharacterClass());
@@ -112,7 +113,7 @@ public class SubclassController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSubclass(@PathVariable Long id) {
         repository.delete(repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Subclasse não encontrada com o ID: " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrado com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 

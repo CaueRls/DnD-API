@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -53,7 +54,7 @@ public class SpellController {
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Spell>> getSpellById(@PathVariable Long id) {
         Spell spell = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Magia não encontrada com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Mágia não encontrado com o ID: " + id));
         return ResponseEntity.ok(toModel(spell));
     }
 
@@ -103,7 +104,7 @@ public class SpellController {
     public ResponseEntity<EntityModel<Spell>> updateSpell(
             @PathVariable Long id, @RequestBody @Valid Spell details) {
         Spell spell = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Magia não encontrada com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Mágia não encontrado com o ID: " + id));
         spell.setName(details.getName());
         spell.setLevel(details.getLevel());
         spell.setDescription(details.getDescription());
@@ -117,7 +118,7 @@ public class SpellController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSpell(@PathVariable Long id) {
         repository.delete(repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Magia não encontrada com o ID: " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Mágia não encontrado com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 

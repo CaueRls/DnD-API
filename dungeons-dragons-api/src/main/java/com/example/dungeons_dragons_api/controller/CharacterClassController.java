@@ -17,7 +17,9 @@ import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.web.bind.annotation.*;
+
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
@@ -52,7 +54,7 @@ public class CharacterClassController {
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<CharacterClass>> getClassById(@PathVariable Long id) {
         CharacterClass c = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Classe não encontrada com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Classe não encontrada com o ID: " + id));
         return ResponseEntity.ok(toModel(c));
     }
 
@@ -102,7 +104,7 @@ public class CharacterClassController {
     public ResponseEntity<EntityModel<CharacterClass>> updateClass(
             @PathVariable Long id, @RequestBody @Valid CharacterClass details) {
         CharacterClass c = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Classe não encontrada com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Classe não encontrada com o ID: " + id));
         c.setName(details.getName());
         c.setHitDie(details.getHitDie());
         c.setDescription(details.getDescription());
@@ -116,7 +118,7 @@ public class CharacterClassController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteClass(@PathVariable Long id) {
         repository.delete(repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Classe não encontrada com o ID: " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Classe não encontrada com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 
