@@ -1,5 +1,6 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Monster;
 import com.example.dungeons_dragons_api.repository.MonsterRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,9 +10,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
@@ -27,24 +27,31 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 @Tag(name = "Monstros", description = "Operações relacionadas aos monstros do D&D 5e")
 public class MonsterController {
 
+    private final MonsterRepository repository;
+    private final PagedResourcesAssembler<Monster> pagedAssembler;
+
     @Autowired
-    private MonsterRepository repository;
+    public MonsterController(MonsterRepository repository,
+                             PagedResourcesAssembler<Monster> pagedAssembler) {
+        this.repository = repository;
+        this.pagedAssembler = pagedAssembler;
+    }
 
     private EntityModel<Monster> toModel(Monster m) {
         return EntityModel.of(m,
                 linkTo(methodOn(MonsterController.class).getMonsterById(m.getId())).withSelfRel(),
                 linkTo(methodOn(MonsterController.class).updateMonster(m.getId(), null)).withRel("update"),
                 linkTo(methodOn(MonsterController.class).deleteMonster(m.getId())).withRel("delete"),
-                linkTo(methodOn(MonsterController.class).getAllMonsters(Pageable.unpaged(), null)).withRel("all-monsters")
+                linkTo(methodOn(MonsterController.class).getAllMonsters(Pageable.unpaged())).withRel("all-monsters")
         );
     }
 
     @Operation(summary = "Lista todos os monstros", description = "Retorna uma lista paginada com todos os monstros cadastrados, incluindo seus atributos.")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
-    public ResponseEntity<PagedModel<EntityModel<Monster>>> getAllMonsters(
-            Pageable pageable, PagedResourcesAssembler<Monster> assembler) {
-        return ResponseEntity.ok(assembler.toModel(repository.findAll(pageable), this::toModel));
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<PagedModel<EntityModel<Monster>>> getAllMonsters(@ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModel));
     }
 
     @Operation(summary = "Busca um monstro pelo ID", description = "Retorna os detalhes de um monstro específico, incluindo seus atributos.")
@@ -98,6 +105,7 @@ public class MonsterController {
                     }))
     @ApiResponse(responseCode = "201", description = "Monstro criado com sucesso")
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<EntityModel<Monster>> createMonster(@RequestBody @Valid Monster monster) {
         return new ResponseEntity<>(toModel(repository.save(monster)), HttpStatus.CREATED);
     }
@@ -131,8 +139,8 @@ public class MonsterController {
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Monster>>> searchByType(
-            @RequestParam String type, Pageable pageable, PagedResourcesAssembler<Monster> assembler) {
-        return ResponseEntity.ok(assembler.toModel(
+            @RequestParam String type, @ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(
                 repository.findByTypeContainingIgnoreCase(type, pageable), this::toModel));
     }
 }

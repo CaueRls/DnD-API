@@ -1,5 +1,6 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Subclass;
 import com.example.dungeons_dragons_api.repository.SubclassRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,9 +10,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
@@ -27,24 +27,31 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 @Tag(name = "Subclasses", description = "Operações relacionadas às subclasses de personagem do D&D 5e")
 public class SubclassController {
 
+    private final SubclassRepository repository;
+    private final PagedResourcesAssembler<Subclass> pagedAssembler;
+
     @Autowired
-    private SubclassRepository repository;
+    public SubclassController(SubclassRepository repository,
+                              PagedResourcesAssembler<Subclass> pagedAssembler) {
+        this.repository = repository;
+        this.pagedAssembler = pagedAssembler;
+    }
 
     private EntityModel<Subclass> toModel(Subclass s) {
         return EntityModel.of(s,
                 linkTo(methodOn(SubclassController.class).getSubclassById(s.getId())).withSelfRel(),
                 linkTo(methodOn(SubclassController.class).updateSubclass(s.getId(), null)).withRel("update"),
                 linkTo(methodOn(SubclassController.class).deleteSubclass(s.getId())).withRel("delete"),
-                linkTo(methodOn(SubclassController.class).getAllSubclasses(Pageable.unpaged(), null)).withRel("all-subclasses")
+                linkTo(methodOn(SubclassController.class).getAllSubclasses(Pageable.unpaged())).withRel("all-subclasses")
         );
     }
 
     @Operation(summary = "Lista todas as subclasses", description = "Retorna uma lista paginada com todas as subclasses cadastradas.")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
-    public ResponseEntity<PagedModel<EntityModel<Subclass>>> getAllSubclasses(
-            Pageable pageable, PagedResourcesAssembler<Subclass> assembler) {
-        return ResponseEntity.ok(assembler.toModel(repository.findAll(pageable), this::toModel));
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<PagedModel<EntityModel<Subclass>>> getAllSubclasses(@ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModel));
     }
 
     @Operation(summary = "Busca uma subclasse pelo ID", description = "Retorna os detalhes de uma subclasse específica, incluindo a classe pai.")
@@ -53,7 +60,7 @@ public class SubclassController {
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Subclass>> getSubclassById(@PathVariable Long id) {
         Subclass s = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrado com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrada com o ID: " + id));
         return ResponseEntity.ok(toModel(s));
     }
 
@@ -89,6 +96,7 @@ public class SubclassController {
                     }))
     @ApiResponse(responseCode = "201", description = "Subclasse criada com sucesso")
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<EntityModel<Subclass>> createSubclass(@RequestBody @Valid Subclass subclass) {
         return new ResponseEntity<>(toModel(repository.save(subclass)), HttpStatus.CREATED);
     }
@@ -100,7 +108,7 @@ public class SubclassController {
     public ResponseEntity<EntityModel<Subclass>> updateSubclass(
             @PathVariable Long id, @RequestBody @Valid Subclass details) {
         Subclass s = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrado com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrada com o ID: " + id));
         s.setName(details.getName());
         s.setDescription(details.getDescription());
         s.setCharacterClass(details.getCharacterClass());
@@ -113,7 +121,7 @@ public class SubclassController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSubclass(@PathVariable Long id) {
         repository.delete(repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrado com o ID: " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Subclasse não encontrada com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 
@@ -122,8 +130,8 @@ public class SubclassController {
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Subclass>>> searchByName(
-            @RequestParam String name, Pageable pageable, PagedResourcesAssembler<Subclass> assembler) {
-        return ResponseEntity.ok(assembler.toModel(
+            @RequestParam String name, @ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(
                 repository.findByNameContainingIgnoreCase(name, pageable), this::toModel));
     }
 }

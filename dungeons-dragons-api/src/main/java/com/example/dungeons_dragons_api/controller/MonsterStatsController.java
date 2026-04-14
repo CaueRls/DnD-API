@@ -1,5 +1,6 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.MonsterStats;
 import com.example.dungeons_dragons_api.repository.MonsterStatsRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,9 +10,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
@@ -27,24 +27,31 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 @Tag(name = "Atributos de Monstros", description = "Operações relacionadas aos atributos (stats) dos monstros do D&D 5e")
 public class MonsterStatsController {
 
+    private final MonsterStatsRepository repository;
+    private final PagedResourcesAssembler<MonsterStats> pagedAssembler;
+
     @Autowired
-    private MonsterStatsRepository repository;
+    public MonsterStatsController(MonsterStatsRepository repository,
+                                  PagedResourcesAssembler<MonsterStats> pagedAssembler) {
+        this.repository = repository;
+        this.pagedAssembler = pagedAssembler;
+    }
 
     private EntityModel<MonsterStats> toModel(MonsterStats s) {
         return EntityModel.of(s,
                 linkTo(methodOn(MonsterStatsController.class).getStatsById(s.getId())).withSelfRel(),
                 linkTo(methodOn(MonsterStatsController.class).updateStats(s.getId(), null)).withRel("update"),
                 linkTo(methodOn(MonsterStatsController.class).deleteStats(s.getId())).withRel("delete"),
-                linkTo(methodOn(MonsterStatsController.class).getAllStats(Pageable.unpaged(), null)).withRel("all-stats")
+                linkTo(methodOn(MonsterStatsController.class).getAllStats(Pageable.unpaged())).withRel("all-stats")
         );
     }
 
     @Operation(summary = "Lista todos os atributos de monstros", description = "Retorna uma lista paginada com todos os conjuntos de atributos cadastrados.")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
-    public ResponseEntity<PagedModel<EntityModel<MonsterStats>>> getAllStats(
-            Pageable pageable, PagedResourcesAssembler<MonsterStats> assembler) {
-        return ResponseEntity.ok(assembler.toModel(repository.findAll(pageable), this::toModel));
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<PagedModel<EntityModel<MonsterStats>>> getAllStats(@ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModel));
     }
 
     @Operation(summary = "Busca atributos pelo ID", description = "Retorna os atributos de um monstro específico pelo ID.")
@@ -53,7 +60,7 @@ public class MonsterStatsController {
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<MonsterStats>> getStatsById(@PathVariable Long id) {
         MonsterStats s = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrado com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrados com o ID: " + id));
         return ResponseEntity.ok(toModel(s));
     }
 
@@ -86,6 +93,7 @@ public class MonsterStatsController {
                     }))
     @ApiResponse(responseCode = "201", description = "Atributos criados com sucesso")
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<EntityModel<MonsterStats>> createStats(@RequestBody @Valid MonsterStats stats) {
         return new ResponseEntity<>(toModel(repository.save(stats)), HttpStatus.CREATED);
     }
@@ -97,7 +105,7 @@ public class MonsterStatsController {
     public ResponseEntity<EntityModel<MonsterStats>> updateStats(
             @PathVariable Long id, @RequestBody @Valid MonsterStats details) {
         MonsterStats s = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrado com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrados com o ID: " + id));
         s.setStrength(details.getStrength());
         s.setDexterity(details.getDexterity());
         s.setConstitution(details.getConstitution());
@@ -113,17 +121,17 @@ public class MonsterStatsController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStats(@PathVariable Long id) {
         repository.delete(repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrado com o ID: " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Atributos não encontrados com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Filtra atributos por força mínima",
-            description = "Consulta personalizada: retorna todos os conjuntos de atributos cuja força (strength) seja maior ou igual ao valor informado.")
+            description = "Consulta personalizada: retorna atributos cuja força (strength) seja maior ou igual ao valor informado.")
     @ApiResponse(responseCode = "200", description = "Filtragem realizada com sucesso")
     @GetMapping("/filter")
     public ResponseEntity<PagedModel<EntityModel<MonsterStats>>> filterByMinStrength(
-            @RequestParam Integer minStrength, Pageable pageable, PagedResourcesAssembler<MonsterStats> assembler) {
-        return ResponseEntity.ok(assembler.toModel(
+            @RequestParam Integer minStrength, @ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(
                 repository.findByStrengthGreaterThanEqual(minStrength, pageable), this::toModel));
     }
 }

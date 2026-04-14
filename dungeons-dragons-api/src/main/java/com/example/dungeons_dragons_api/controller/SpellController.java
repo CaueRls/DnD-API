@@ -1,5 +1,6 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Spell;
 import com.example.dungeons_dragons_api.repository.SpellRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,13 +10,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
-import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,25 +27,31 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 @Tag(name = "Magias", description = "Operações relacionadas às magias do D&D 5e")
 public class SpellController {
 
+    private final SpellRepository repository;
+    private final PagedResourcesAssembler<Spell> pagedAssembler;
+
     @Autowired
-    private SpellRepository repository;
+    public SpellController(SpellRepository repository,
+                           PagedResourcesAssembler<Spell> pagedAssembler) {
+        this.repository = repository;
+        this.pagedAssembler = pagedAssembler;
+    }
 
     private EntityModel<Spell> toModel(Spell spell) {
         return EntityModel.of(spell,
                 linkTo(methodOn(SpellController.class).getSpellById(spell.getId())).withSelfRel(),
                 linkTo(methodOn(SpellController.class).updateSpell(spell.getId(), null)).withRel("update"),
                 linkTo(methodOn(SpellController.class).deleteSpell(spell.getId())).withRel("delete"),
-                linkTo(methodOn(SpellController.class).getAllSpells(Pageable.unpaged(), null)).withRel("all-spells")
+                linkTo(methodOn(SpellController.class).getAllSpells(Pageable.unpaged())).withRel("all-spells")
         );
     }
 
     @Operation(summary = "Lista todas as magias", description = "Retorna uma lista paginada com todas as magias cadastradas.")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
-    public ResponseEntity<PagedModel<EntityModel<Spell>>> getAllSpells(
-            Pageable pageable, PagedResourcesAssembler<Spell> assembler) {
-        Page<Spell> spells = repository.findAll(pageable);
-        return ResponseEntity.ok(assembler.toModel(spells, this::toModel));
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<PagedModel<EntityModel<Spell>>> getAllSpells(@ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModel));
     }
 
     @Operation(summary = "Busca uma magia pelo ID", description = "Retorna os detalhes de uma magia específica.")
@@ -54,12 +60,12 @@ public class SpellController {
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Spell>> getSpellById(@PathVariable Long id) {
         Spell spell = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Mágia não encontrado com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
         return ResponseEntity.ok(toModel(spell));
     }
 
     @Operation(summary = "Cria uma nova magia",
-            description = "Cadastra uma nova magia. O campo 'school' deve ser um dos valores do enum MagicSchool: ABJURATION, CONJURATION, DIVINATION, ENCHANTMENT, EVOCATION, ILLUSION, NECROMANCY, TRANSMUTATION.")
+            description = "Cadastra uma nova magia. O campo 'school' deve ser um dos valores: ABJURATION, CONJURATION, DIVINATION, ENCHANTMENT, EVOCATION, ILLUSION, NECROMANCY, TRANSMUTATION.")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Spell.class),
                     examples = {
@@ -93,6 +99,7 @@ public class SpellController {
                     }))
     @ApiResponse(responseCode = "201", description = "Magia criada com sucesso")
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<EntityModel<Spell>> createSpell(@RequestBody @Valid Spell spell) {
         return new ResponseEntity<>(toModel(repository.save(spell)), HttpStatus.CREATED);
     }
@@ -101,10 +108,9 @@ public class SpellController {
     @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @PutMapping("/{id}")
-    public ResponseEntity<EntityModel<Spell>> updateSpell(
-            @PathVariable Long id, @RequestBody @Valid Spell details) {
+    public ResponseEntity<EntityModel<Spell>> updateSpell(@PathVariable Long id, @RequestBody @Valid Spell details) {
         Spell spell = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Mágia não encontrado com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
         spell.setName(details.getName());
         spell.setLevel(details.getLevel());
         spell.setDescription(details.getDescription());
@@ -118,7 +124,7 @@ public class SpellController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSpell(@PathVariable Long id) {
         repository.delete(repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Mágia não encontrado com o ID: " + id)));
+                .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 
@@ -127,8 +133,8 @@ public class SpellController {
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByName(
-            @RequestParam String name, Pageable pageable, PagedResourcesAssembler<Spell> assembler) {
-        return ResponseEntity.ok(assembler.toModel(
+            @RequestParam String name, @ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(
                 repository.findByNameContainingIgnoreCase(name, pageable), this::toModel));
     }
 }
