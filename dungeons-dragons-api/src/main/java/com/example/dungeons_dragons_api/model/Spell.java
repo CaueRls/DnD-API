@@ -28,6 +28,9 @@ public class Spell extends RepresentationModel<Spell> {
     @NotNull(message = "A escola de magia é obrigatória")
     private MagicSchool school;
 
+    @Column(name = "casting_time")
+    private String castingTime;
+
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -43,4 +46,7 @@ public class Spell extends RepresentationModel<Spell> {
 
     public MagicSchool getSchool() { return school; }
     public void setSchool(MagicSchool school) { this.school = school; }
+
+    public String getCastingTime() { return castingTime; }
+    public void setCastingTime(String castingTime) { this.castingTime = castingTime; }
 }

@@ -23,16 +23,16 @@ import org.springframework.web.bind.annotation.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
-@RequestMapping("/spells")
-@Tag(name = "Magias", description = "Operações relacionadas às magias do D&D 5e")
-public class SpellController {
+@RequestMapping(value = "/spells", headers = "X-API-Version=v2")
+@Tag(name = "Magias V2", description = "Versão 2 das operações de magias — inclui o campo castingTime (tempo de conjuração)")
+public class SpellControllerV2 {
 
     private final SpellRepository repository;
     private final PagedResourcesAssembler<Spell> pagedAssembler;
 
     @Autowired
-    public SpellController(SpellRepository repository,
-                           PagedResourcesAssembler<Spell> pagedAssembler) {
+    public SpellControllerV2(SpellRepository repository,
+                             PagedResourcesAssembler<Spell> pagedAssembler) {
         this.repository = repository;
         this.pagedAssembler = pagedAssembler;
     }
@@ -46,7 +46,10 @@ public class SpellController {
         );
     }
 
-    @Operation(summary = "Lista todas as magias", description = "Retorna uma lista paginada com todas as magias cadastradas.")
+    @Operation(
+            summary = "Lista todas as magias [V2]",
+            description = "Retorna uma lista paginada com todas as magias cadastradas. Esta versão inclui o campo castingTime."
+    )
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -54,7 +57,10 @@ public class SpellController {
         return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModel));
     }
 
-    @Operation(summary = "Busca uma magia pelo ID", description = "Retorna os detalhes de uma magia específica.")
+    @Operation(
+            summary = "Busca uma magia pelo ID [V2]",
+            description = "Retorna os detalhes de uma magia específica, incluindo o campo castingTime."
+    )
     @ApiResponse(responseCode = "200", description = "Magia encontrada")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @GetMapping("/{id}")
@@ -64,8 +70,12 @@ public class SpellController {
         return ResponseEntity.ok(toModel(spell));
     }
 
-    @Operation(summary = "Cria uma nova magia",
-            description = "Cadastra uma nova magia. O campo 'school' deve ser um dos valores: ABJURATION, CONJURATION, DIVINATION, ENCHANTMENT, EVOCATION, ILLUSION, NECROMANCY, TRANSMUTATION.")
+    @Operation(
+            summary = "Cria uma nova magia [V2]",
+            description = "Versão 2: agora suporta o campo castingTime (tempo de conjuração). " +
+                    "Valores comuns: '1 action', '1 bonus action', '1 reaction', '1 minute', '10 minutes', '1 hour'. " +
+                    "O campo 'school' deve ser um dos valores: ABJURATION, CONJURATION, DIVINATION, ENCHANTMENT, EVOCATION, ILLUSION, NECROMANCY, TRANSMUTATION."
+    )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Spell.class),
                     examples = {
@@ -75,7 +85,8 @@ public class SpellController {
                       "name": "Bola de Fogo",
                       "level": 3,
                       "description": "Uma rajada de chamas explode em um ponto escolhido. Cada criatura em esfera de 20 pés deve realizar teste de Destreza.",
-                      "school": "EVOCATION"
+                      "school": "EVOCATION",
+                      "castingTime": "1 action"
                     }
                     """),
                             @ExampleObject(name = "Curar Ferimentos", summary = "Magia de cura nível 1",
@@ -84,7 +95,8 @@ public class SpellController {
                       "name": "Curar Ferimentos",
                       "level": 1,
                       "description": "Uma criatura que você toque recupera pontos de vida iguais a 1d8 + seu modificador de conjuração.",
-                      "school": "EVOCATION"
+                      "school": "EVOCATION",
+                      "castingTime": "1 action"
                     }
                     """),
                             @ExampleObject(name = "Míssil Mágico", summary = "Magia ofensiva nível 1",
@@ -93,32 +105,57 @@ public class SpellController {
                       "name": "Míssil Mágico",
                       "level": 1,
                       "description": "Três dardos de força mágica acertam automaticamente criaturas à sua escolha no alcance.",
-                      "school": "EVOCATION"
+                      "school": "EVOCATION",
+                      "castingTime": "1 action"
+                    }
+                    """),
+                            @ExampleObject(name = "Palavra de Cura em Massa", summary = "Magia de cura em área nível 3",
+                                    value = """
+                    {
+                      "name": "Palavra de Cura em Massa",
+                      "level": 3,
+                      "description": "Até seis criaturas de sua escolha que você possa ver recuperam pontos de vida.",
+                      "school": "EVOCATION",
+                      "castingTime": "1 bonus action"
                     }
                     """)
                     }))
     @ApiResponse(responseCode = "201", description = "Magia criada com sucesso")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<EntityModel<Spell>> createSpell(@RequestBody @Valid Spell spell) {
+    public ResponseEntity<EntityModel<Spell>> createSpell(
+            @org.springframework.web.bind.annotation.RequestBody
+            @Valid Spell spell) {
         return new ResponseEntity<>(toModel(repository.save(spell)), HttpStatus.CREATED);
     }
 
-    @Operation(summary = "Atualiza uma magia existente", description = "Atualiza todos os campos de uma magia pelo ID.")
+    @Operation(
+            summary = "Atualiza uma magia existente [V2]",
+            description = "Versão 2: permite atualizar o campo castingTime além dos demais campos."
+    )
     @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @PutMapping("/{id}")
-    public ResponseEntity<EntityModel<Spell>> updateSpell(@PathVariable Long id, @RequestBody @Valid Spell details) {
+    public ResponseEntity<EntityModel<Spell>> updateSpell(
+            @PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestBody
+            @Valid Spell details) {
         Spell spell = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
         spell.setName(details.getName());
         spell.setLevel(details.getLevel());
         spell.setDescription(details.getDescription());
         spell.setSchool(details.getSchool());
+        spell.setCastingTime(details.getCastingTime()); // ← campo novo da v2
         return ResponseEntity.ok(toModel(repository.save(spell)));
     }
 
-    @Operation(summary = "Remove uma magia", description = "Deleta permanentemente uma magia pelo ID.")
+    @Operation(
+            summary = "Remove uma magia [V2]",
+            description = "Deleta permanentemente uma magia pelo ID."
+    )
     @ApiResponse(responseCode = "204", description = "Magia removida com sucesso")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @DeleteMapping("/{id}")
@@ -128,8 +165,10 @@ public class SpellController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Busca magias pelo nome",
-            description = "Consulta personalizada: retorna magias cujo nome contenha o termo informado (sem distinção de maiúsculas/minúsculas).")
+    @Operation(
+            summary = "Busca magias pelo nome [V2]",
+            description = "Consulta personalizada: retorna magias cujo nome contenha o termo informado. Resposta inclui castingTime."
+    )
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByName(
