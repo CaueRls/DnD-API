@@ -1,6 +1,7 @@
 package com.example.dungeons_dragons_api.config;
 
 import com.example.dungeons_dragons_api.filter.ApiKeyFilter;
+import com.example.dungeons_dragons_api.filter.IdempotencyFilter;
 import com.example.dungeons_dragons_api.filter.RateLimitFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -22,17 +23,15 @@ public class SecurityConfig {
     @Autowired
     private RateLimitFilter rateLimitFilter;
 
+    @Autowired
+    private IdempotencyFilter idempotencyFilter;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Desabilita CSRF — não necessário para APIs REST
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // Desabilita sessão — API stateless
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // Libera rotas públicas, protege o resto
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/swagger-ui/**",
@@ -44,14 +43,12 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-
-                // Permite o console H2 em frames
                 .headers(headers ->
                         headers.frameOptions(frame -> frame.sameOrigin()))
-
-                // Adiciona nossos filtros antes do filtro padrão do Spring Security
+                // Ordem dos filtros: RateLimit → ApiKey → Idempotency
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(idempotencyFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
