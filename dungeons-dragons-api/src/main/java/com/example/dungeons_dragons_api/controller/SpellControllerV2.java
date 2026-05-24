@@ -4,6 +4,8 @@ import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Spell;
 import com.example.dungeons_dragons_api.repository.SpellRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,7 +26,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequestMapping(value = "/spells", headers = "X-API-Version=v2")
-@Tag(name = "Magias V2", description = "Versão 2 das operações de magias — inclui o campo castingTime (tempo de conjuração)")
+@Tag(name = "Magias V2", description = "Versão 2 — use o header 'X-API-Version: v2'. Inclui o campo castingTime (tempo de conjuração).")
 public class SpellControllerV2 {
 
     private final SpellRepository repository;
@@ -48,19 +50,29 @@ public class SpellControllerV2 {
 
     @Operation(
             summary = "Lista todas as magias [V2]",
-            description = "Retorna uma lista paginada com todas as magias cadastradas. Esta versão inclui o campo castingTime."
+            operationId = "getAllSpellsV2",
+            description = "Requer header X-API-Version: v2. Retorna lista paginada incluindo o campo castingTime."
     )
+    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+            description = "Deve ser 'v2' para acessar este endpoint",
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<PagedModel<EntityModel<Spell>>> getAllSpells(@ParameterObject Pageable pageable) {
-        return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModel));
+    public ResponseEntity<PagedModel<EntityModel<Spell>>> getAllSpells(
+            @ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(
+                repository.findAll(pageable), this::toModel));
     }
 
     @Operation(
             summary = "Busca uma magia pelo ID [V2]",
-            description = "Retorna os detalhes de uma magia específica, incluindo o campo castingTime."
+            operationId = "getSpellByIdV2",
+            description = "Requer header X-API-Version: v2. Retorna os detalhes incluindo o campo castingTime."
     )
+    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+            description = "Deve ser 'v2' para acessar este endpoint",
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
     @ApiResponse(responseCode = "200", description = "Magia encontrada")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @GetMapping("/{id}")
@@ -72,53 +84,47 @@ public class SpellControllerV2 {
 
     @Operation(
             summary = "Cria uma nova magia [V2]",
-            description = "Versão 2: agora suporta o campo castingTime (tempo de conjuração). " +
-                    "Valores comuns: '1 action', '1 bonus action', '1 reaction', '1 minute', '10 minutes', '1 hour'. " +
-                    "O campo 'school' deve ser um dos valores: ABJURATION, CONJURATION, DIVINATION, ENCHANTMENT, EVOCATION, ILLUSION, NECROMANCY, TRANSMUTATION."
+            operationId = "createSpellV2",
+            description = "Requer header X-API-Version: v2. Suporta o campo castingTime. " +
+                    "Valores comuns: '1 action', '1 bonus action', '1 reaction', '1 minute', '1 hour'."
     )
+    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+            description = "Deve ser 'v2' para acessar este endpoint",
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Spell.class),
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = Spell.class),
                     examples = {
                             @ExampleObject(name = "Bola de Fogo", summary = "Magia ofensiva nível 3",
                                     value = """
-                    {
-                      "name": "Bola de Fogo",
-                      "level": 3,
-                      "description": "Uma rajada de chamas explode em um ponto escolhido. Cada criatura em esfera de 20 pés deve realizar teste de Destreza.",
-                      "school": "EVOCATION",
-                      "castingTime": "1 action"
-                    }
-                    """),
+                                    {
+                                      "name": "Bola de Fogo",
+                                      "level": 3,
+                                      "description": "Uma rajada de chamas explode em um ponto escolhido.",
+                                      "school": "EVOCATION",
+                                      "castingTime": "1 action"
+                                    }
+                                    """),
                             @ExampleObject(name = "Curar Ferimentos", summary = "Magia de cura nível 1",
                                     value = """
-                    {
-                      "name": "Curar Ferimentos",
-                      "level": 1,
-                      "description": "Uma criatura que você toque recupera pontos de vida iguais a 1d8 + seu modificador de conjuração.",
-                      "school": "EVOCATION",
-                      "castingTime": "1 action"
-                    }
-                    """),
-                            @ExampleObject(name = "Míssil Mágico", summary = "Magia ofensiva nível 1",
+                                    {
+                                      "name": "Curar Ferimentos",
+                                      "level": 1,
+                                      "description": "Uma criatura que você toque recupera pontos de vida.",
+                                      "school": "EVOCATION",
+                                      "castingTime": "1 action"
+                                    }
+                                    """),
+                            @ExampleObject(name = "Palavra de Cura", summary = "Cura rápida nível 1",
                                     value = """
-                    {
-                      "name": "Míssil Mágico",
-                      "level": 1,
-                      "description": "Três dardos de força mágica acertam automaticamente criaturas à sua escolha no alcance.",
-                      "school": "EVOCATION",
-                      "castingTime": "1 action"
-                    }
-                    """),
-                            @ExampleObject(name = "Palavra de Cura em Massa", summary = "Magia de cura em área nível 3",
-                                    value = """
-                    {
-                      "name": "Palavra de Cura em Massa",
-                      "level": 3,
-                      "description": "Até seis criaturas de sua escolha que você possa ver recuperam pontos de vida.",
-                      "school": "EVOCATION",
-                      "castingTime": "1 bonus action"
-                    }
-                    """)
+                                    {
+                                      "name": "Palavra de Cura",
+                                      "level": 1,
+                                      "description": "Uma criatura de sua escolha recupera pontos de vida.",
+                                      "school": "EVOCATION",
+                                      "castingTime": "1 bonus action"
+                                    }
+                                    """)
                     }))
     @ApiResponse(responseCode = "201", description = "Magia criada com sucesso")
     @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
@@ -132,8 +138,12 @@ public class SpellControllerV2 {
 
     @Operation(
             summary = "Atualiza uma magia existente [V2]",
-            description = "Versão 2: permite atualizar o campo castingTime além dos demais campos."
+            operationId = "updateSpellV2",
+            description = "Requer header X-API-Version: v2. Permite atualizar o campo castingTime."
     )
+    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+            description = "Deve ser 'v2' para acessar este endpoint",
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
     @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
     @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
@@ -148,14 +158,18 @@ public class SpellControllerV2 {
         spell.setLevel(details.getLevel());
         spell.setDescription(details.getDescription());
         spell.setSchool(details.getSchool());
-        spell.setCastingTime(details.getCastingTime()); // ← campo novo da v2
+        spell.setCastingTime(details.getCastingTime());
         return ResponseEntity.ok(toModel(repository.save(spell)));
     }
 
     @Operation(
             summary = "Remove uma magia [V2]",
-            description = "Deleta permanentemente uma magia pelo ID."
+            operationId = "deleteSpellV2",
+            description = "Requer header X-API-Version: v2. Deleta permanentemente uma magia pelo ID."
     )
+    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+            description = "Deve ser 'v2' para acessar este endpoint",
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
     @ApiResponse(responseCode = "204", description = "Magia removida com sucesso")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @DeleteMapping("/{id}")
@@ -167,8 +181,12 @@ public class SpellControllerV2 {
 
     @Operation(
             summary = "Busca magias pelo nome [V2]",
-            description = "Consulta personalizada: retorna magias cujo nome contenha o termo informado. Resposta inclui castingTime."
+            operationId = "searchByNameV2",
+            description = "Requer header X-API-Version: v2. Retorna magias cujo nome contenha o termo informado. Resposta inclui castingTime."
     )
+    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+            description = "Deve ser 'v2' para acessar este endpoint",
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByName(

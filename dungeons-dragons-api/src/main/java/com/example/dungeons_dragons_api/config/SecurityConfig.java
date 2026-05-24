@@ -38,6 +38,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs",
+                                "/v3/api-docs.yaml",
+                                "/swagger-resources/**",
+                                "/webjars/**",
                                 "/h2-console/**",
                                 "/api-keys/**"
                         ).permitAll()
@@ -45,7 +48,6 @@ public class SecurityConfig {
                 )
                 .headers(headers ->
                         headers.frameOptions(frame -> frame.sameOrigin()))
-                // Ordem dos filtros: RateLimit → ApiKey → Idempotency
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(idempotencyFilter, UsernamePasswordAuthenticationFilter.class);
