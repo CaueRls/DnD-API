@@ -1,5 +1,6 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceAlreadyExistsException;
 import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Monster;
 import com.example.dungeons_dragons_api.repository.MonsterRepository;
@@ -106,7 +107,15 @@ public class MonsterController {
     @ApiResponse(responseCode = "201", description = "Monstro criado com sucesso")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<EntityModel<Monster>> createMonster(@RequestBody @Valid Monster monster) {
+    public ResponseEntity<EntityModel<Monster>> createMonster(
+            @org.springframework.web.bind.annotation.RequestBody
+            @Valid Monster monster) {
+
+        if (repository.existsByNameIgnoreCase(monster.getName())) {
+            throw new ResourceAlreadyExistsException(
+                    "Já existe um monstro com o nome '" + monster.getName() + "'.");
+        }
+
         return new ResponseEntity<>(toModel(repository.save(monster)), HttpStatus.CREATED);
     }
 

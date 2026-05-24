@@ -139,7 +139,7 @@ public class SpellControllerV2 {
     @Operation(
             summary = "Atualiza uma magia existente [V2]",
             operationId = "updateSpellV2",
-            description = "Requer header X-API-Version: v2. Permite atualizar o campo castingTime."
+            description = "Requer header X-API-Version: v2. Permite atualizar o campo castingTime além dos campos básicos."
     )
     @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
             description = "Deve ser 'v2' para acessar este endpoint",
@@ -158,7 +158,7 @@ public class SpellControllerV2 {
         spell.setLevel(details.getLevel());
         spell.setDescription(details.getDescription());
         spell.setSchool(details.getSchool());
-        spell.setCastingTime(details.getCastingTime());
+        spell.setCastingTime(details.getCastingTime()); // ← V2 atualiza castingTime
         return ResponseEntity.ok(toModel(repository.save(spell)));
     }
 
@@ -182,7 +182,7 @@ public class SpellControllerV2 {
     @Operation(
             summary = "Busca magias pelo nome [V2]",
             operationId = "searchByNameV2",
-            description = "Requer header X-API-Version: v2. Retorna magias cujo nome contenha o termo informado. Resposta inclui castingTime."
+            description = "Requer header X-API-Version: v2. Retorna magias cujo nome contenha o termo informado. Inclui castingTime."
     )
     @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
             description = "Deve ser 'v2' para acessar este endpoint",

@@ -1,5 +1,6 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceAlreadyExistsException;
 import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.CharacterClass;
 import com.example.dungeons_dragons_api.repository.CharacterClassRepository;
@@ -100,7 +101,15 @@ public class CharacterClassController {
     @ApiResponse(responseCode = "201", description = "Classe criada com sucesso")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<EntityModel<CharacterClass>> createClass(@RequestBody @Valid CharacterClass c) {
+    public ResponseEntity<EntityModel<CharacterClass>> createClass(
+            @org.springframework.web.bind.annotation.RequestBody
+            @Valid CharacterClass c) {
+
+        if (repository.existsByNameIgnoreCase(c.getName())) {
+            throw new ResourceAlreadyExistsException(
+                    "Já existe uma classe com o nome '" + c.getName() + "'.");
+        }
+
         return new ResponseEntity<>(toModel(repository.save(c)), HttpStatus.CREATED);
     }
 

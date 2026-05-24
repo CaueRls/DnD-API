@@ -1,5 +1,6 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceAlreadyExistsException;
 import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Spell;
 import com.example.dungeons_dragons_api.repository.SpellRepository;
@@ -24,7 +25,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequestMapping("/spells")
-@Tag(name = "Magias", description = "Operações relacionadas às magias do D&D 5e")
+@Tag(name = "Magias", description = "Versão 1 — operações básicas de magias do D&D 5e (sem castingTime)")
 public class SpellController {
 
     private final SpellRepository repository;
@@ -37,16 +38,21 @@ public class SpellController {
         this.pagedAssembler = pagedAssembler;
     }
 
+    // ← CORRIGIDO: links apontam para SpellController (V1), não V2
     private EntityModel<Spell> toModel(Spell spell) {
         return EntityModel.of(spell,
-                linkTo(methodOn(SpellControllerV2.class).getSpellById(spell.getId())).withSelfRel(),
-                linkTo(methodOn(SpellControllerV2.class).updateSpell(spell.getId(), null)).withRel("update"),
-                linkTo(methodOn(SpellControllerV2.class).deleteSpell(spell.getId())).withRel("delete"),
-                linkTo(methodOn(SpellControllerV2.class).getAllSpells(Pageable.unpaged())).withRel("all-spells")
+                linkTo(methodOn(SpellController.class).getSpellById(spell.getId())).withSelfRel(),
+                linkTo(methodOn(SpellController.class).updateSpell(spell.getId(), null)).withRel("update"),
+                linkTo(methodOn(SpellController.class).deleteSpell(spell.getId())).withRel("delete"),
+                linkTo(methodOn(SpellController.class).getAllSpells(Pageable.unpaged())).withRel("all-spells")
         );
     }
 
-    @Operation(summary = "Lista todas as magias", description = "Retorna uma lista paginada com todas as magias cadastradas.")
+    @Operation(
+            summary = "Lista todas as magias",
+            operationId = "getAllSpells",
+            description = "Versão 1. Retorna lista paginada com todas as magias. Não inclui castingTime."
+    )
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -54,7 +60,11 @@ public class SpellController {
         return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModel));
     }
 
-    @Operation(summary = "Busca uma magia pelo ID", description = "Retorna os detalhes de uma magia específica.")
+    @Operation(
+            summary = "Busca uma magia pelo ID",
+            operationId = "getSpellById",
+            description = "Versão 1. Retorna os detalhes de uma magia específica."
+    )
     @ApiResponse(responseCode = "200", description = "Magia encontrada")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @GetMapping("/{id}")
@@ -64,61 +74,88 @@ public class SpellController {
         return ResponseEntity.ok(toModel(spell));
     }
 
-    @Operation(summary = "Cria uma nova magia",
-            description = "Cadastra uma nova magia. O campo 'school' deve ser um dos valores: ABJURATION, CONJURATION, DIVINATION, ENCHANTMENT, EVOCATION, ILLUSION, NECROMANCY, TRANSMUTATION.")
+    @Operation(
+            summary = "Cria uma nova magia",
+            operationId = "createSpell",
+            description = "Versão 1. Cadastra uma nova magia sem o campo castingTime. " +
+                    "O campo 'school' deve ser: ABJURATION, CONJURATION, DIVINATION, ENCHANTMENT, EVOCATION, ILLUSION, NECROMANCY, TRANSMUTATION."
+    )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Spell.class),
                     examples = {
                             @ExampleObject(name = "Bola de Fogo", summary = "Magia ofensiva nível 3",
                                     value = """
-                    {
-                      "name": "Bola de Fogo",
-                      "level": 3,
-                      "description": "Uma rajada de chamas explode em um ponto escolhido. Cada criatura em esfera de 20 pés deve realizar teste de Destreza.",
-                      "school": "EVOCATION"
-                    }
-                    """),
+                                    {
+                                      "name": "Bola de Fogo",
+                                      "level": 3,
+                                      "description": "Uma rajada de chamas explode em um ponto escolhido.",
+                                      "school": "EVOCATION"
+                                    }
+                                    """),
                             @ExampleObject(name = "Curar Ferimentos", summary = "Magia de cura nível 1",
                                     value = """
-                    {
-                      "name": "Curar Ferimentos",
-                      "level": 1,
-                      "description": "Uma criatura que você toque recupera pontos de vida iguais a 1d8 + seu modificador de conjuração.",
-                      "school": "EVOCATION"
-                    }
-                    """),
+                                    {
+                                      "name": "Curar Ferimentos",
+                                      "level": 1,
+                                      "description": "Uma criatura que você toque recupera pontos de vida.",
+                                      "school": "EVOCATION"
+                                    }
+                                    """),
                             @ExampleObject(name = "Míssil Mágico", summary = "Magia ofensiva nível 1",
                                     value = """
-                    {
-                      "name": "Míssil Mágico",
-                      "level": 1,
-                      "description": "Três dardos de força mágica acertam automaticamente criaturas à sua escolha no alcance.",
-                      "school": "EVOCATION"
-                    }
-                    """)
+                                    {
+                                      "name": "Míssil Mágico",
+                                      "level": 1,
+                                      "description": "Três dardos de força mágica acertam automaticamente criaturas no alcance.",
+                                      "school": "EVOCATION"
+                                    }
+                                    """)
                     }))
     @ApiResponse(responseCode = "201", description = "Magia criada com sucesso")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<EntityModel<Spell>> createSpell(@RequestBody @Valid Spell spell) {
+    public ResponseEntity<EntityModel<Spell>> createSpell(
+            @org.springframework.web.bind.annotation.RequestBody
+            @Valid Spell spell) {
+
+        // ← verificação de duplicidade
+        if (repository.existsByNameIgnoreCase(spell.getName())) {
+            throw new ResourceAlreadyExistsException(
+                    "Já existe uma magia com o nome '" + spell.getName() + "'.");
+        }
+
         return new ResponseEntity<>(toModel(repository.save(spell)), HttpStatus.CREATED);
     }
 
-    @Operation(summary = "Atualiza uma magia existente", description = "Atualiza todos os campos de uma magia pelo ID.")
+    @Operation(
+            summary = "Atualiza uma magia existente",
+            operationId = "updateSpell",
+            description = "Versão 1. Atualiza os campos básicos de uma magia. Não atualiza castingTime."
+    )
     @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @PutMapping("/{id}")
-    public ResponseEntity<EntityModel<Spell>> updateSpell(@PathVariable Long id, @RequestBody @Valid Spell details) {
+    public ResponseEntity<EntityModel<Spell>> updateSpell(
+            @PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestBody
+            @Valid Spell details) {
         Spell spell = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
         spell.setName(details.getName());
         spell.setLevel(details.getLevel());
         spell.setDescription(details.getDescription());
         spell.setSchool(details.getSchool());
+        // ← V1 não atualiza castingTime intencionalmente
         return ResponseEntity.ok(toModel(repository.save(spell)));
     }
 
-    @Operation(summary = "Remove uma magia", description = "Deleta permanentemente uma magia pelo ID.")
+    @Operation(
+            summary = "Remove uma magia",
+            operationId = "deleteSpell",
+            description = "Versão 1. Deleta permanentemente uma magia pelo ID."
+    )
     @ApiResponse(responseCode = "204", description = "Magia removida com sucesso")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @DeleteMapping("/{id}")
@@ -128,8 +165,11 @@ public class SpellController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Busca magias pelo nome",
-            description = "Consulta personalizada: retorna magias cujo nome contenha o termo informado (sem distinção de maiúsculas/minúsculas).")
+    @Operation(
+            summary = "Busca magias pelo nome",
+            operationId = "searchByName",
+            description = "Versão 1. Consulta personalizada por nome (sem distinção de maiúsculas/minúsculas)."
+    )
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByName(
@@ -137,4 +177,5 @@ public class SpellController {
         return ResponseEntity.ok(pagedAssembler.toModel(
                 repository.findByNameContainingIgnoreCase(name, pageable), this::toModel));
     }
+
 }

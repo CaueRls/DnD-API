@@ -9,4 +9,5 @@ public interface MonsterRepository extends JpaRepository<Monster, Long> {
 
 
     Page<Monster> findByTypeContainingIgnoreCase(String type, Pageable pageable);
+    boolean existsByNameIgnoreCase(String name);
 }

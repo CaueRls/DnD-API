@@ -9,4 +9,5 @@ public interface SubclassRepository extends JpaRepository<Subclass, Long> {
 
 
     Page<Subclass> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    boolean existsByNameIgnoreCase(String name);
 }

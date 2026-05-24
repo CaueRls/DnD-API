@@ -9,4 +9,5 @@ public interface CharacterClassRepository extends JpaRepository<CharacterClass, 
 
 
     Page<CharacterClass> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    boolean existsByNameIgnoreCase(String name);
 }

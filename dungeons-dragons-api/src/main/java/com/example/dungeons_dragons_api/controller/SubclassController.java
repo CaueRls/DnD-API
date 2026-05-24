@@ -1,5 +1,6 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceAlreadyExistsException;
 import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Subclass;
 import com.example.dungeons_dragons_api.repository.SubclassRepository;
@@ -97,7 +98,15 @@ public class SubclassController {
     @ApiResponse(responseCode = "201", description = "Subclasse criada com sucesso")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<EntityModel<Subclass>> createSubclass(@RequestBody @Valid Subclass subclass) {
+    public ResponseEntity<EntityModel<Subclass>> createSubclass(
+            @org.springframework.web.bind.annotation.RequestBody
+            @Valid Subclass subclass) {
+
+        if (repository.existsByNameIgnoreCase(subclass.getName())) {
+            throw new ResourceAlreadyExistsException(
+                    "Já existe uma subclasse com o nome '" + subclass.getName() + "'.");
+        }
+
         return new ResponseEntity<>(toModel(repository.save(subclass)), HttpStatus.CREATED);
     }
 

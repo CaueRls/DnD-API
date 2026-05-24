@@ -9,4 +9,5 @@ public interface SpellRepository extends JpaRepository<Spell, Long> {
 
 
     Page<Spell> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    boolean existsByNameIgnoreCase(String name);
 }
