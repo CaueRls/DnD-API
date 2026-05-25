@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
-@RequestMapping("/spells")
+@RequestMapping("/v1/spells")
 @Tag(name = "Magias", description = "Versão 1 — operações básicas de magias do D&D 5e (sem castingTime)")
 public class SpellController {
 

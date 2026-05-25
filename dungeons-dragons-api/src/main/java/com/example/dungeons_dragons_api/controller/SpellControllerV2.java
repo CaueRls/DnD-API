@@ -4,8 +4,8 @@ import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Spell;
 import com.example.dungeons_dragons_api.repository.SpellRepository;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
+/*import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;*/
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
-@RequestMapping(value = "/spells", headers = "X-API-Version=v2")
+@RequestMapping("/v2/spells")
 @Tag(name = "Magias V2", description = "Versão 2 — use o header 'X-API-Version: v2'. Inclui o campo castingTime (tempo de conjuração).")
 public class SpellControllerV2 {
 
@@ -53,9 +53,9 @@ public class SpellControllerV2 {
             operationId = "getAllSpellsV2",
             description = "Requer header X-API-Version: v2. Retorna lista paginada incluindo o campo castingTime."
     )
-    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
             description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -70,9 +70,9 @@ public class SpellControllerV2 {
             operationId = "getSpellByIdV2",
             description = "Requer header X-API-Version: v2. Retorna os detalhes incluindo o campo castingTime."
     )
-    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
             description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "200", description = "Magia encontrada")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @GetMapping("/{id}")
@@ -88,9 +88,9 @@ public class SpellControllerV2 {
             description = "Requer header X-API-Version: v2. Suporta o campo castingTime. " +
                     "Valores comuns: '1 action', '1 bonus action', '1 reaction', '1 minute', '1 hour'."
     )
-    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
             description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = Spell.class),
@@ -141,9 +141,9 @@ public class SpellControllerV2 {
             operationId = "updateSpellV2",
             description = "Requer header X-API-Version: v2. Permite atualizar o campo castingTime além dos campos básicos."
     )
-    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
             description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
     @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
@@ -167,9 +167,9 @@ public class SpellControllerV2 {
             operationId = "deleteSpellV2",
             description = "Requer header X-API-Version: v2. Deleta permanentemente uma magia pelo ID."
     )
-    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
             description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "204", description = "Magia removida com sucesso")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @DeleteMapping("/{id}")
@@ -184,9 +184,9 @@ public class SpellControllerV2 {
             operationId = "searchByNameV2",
             description = "Requer header X-API-Version: v2. Retorna magias cujo nome contenha o termo informado. Inclui castingTime."
     )
-    @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
+    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
             description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
+            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByName(
