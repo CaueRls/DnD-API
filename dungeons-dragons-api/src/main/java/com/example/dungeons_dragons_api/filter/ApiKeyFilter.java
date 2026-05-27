@@ -21,10 +21,10 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     private ApiKeyRepository apiKeyRepository;
 
     private static final List<String> ROTAS_PUBLICAS = List.of(
+            "/api-keys",
             "/swagger-ui",
             "/v3/api-docs",
-            "/h2-console",
-            "/api-keys"
+            "/h2-console"
     );
 
     @Override
@@ -40,8 +40,10 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        boolean isPublica = ROTAS_PUBLICAS.stream().anyMatch(path::startsWith);
-        if (isPublica) {
+        boolean rotaPublica = ROTAS_PUBLICAS.stream()
+                .anyMatch(path::startsWith);
+
+        if (rotaPublica) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -50,14 +52,14 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         if (apiKey == null || apiKey.isBlank()) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.setContentType("application/json;charset=UTF-8");
+            response.setContentType("application/json");
             response.getWriter().write("""
-                {
-                  "status": 401,
-                  "error": "Unauthorized",
-                  "message": "Header X-API-Key é obrigatório. Gere uma chave em POST /api-keys?owner=seu-nome."
-                }
-                """);
+                    {
+                      "status": 401,
+                      "error": "Unauthorized",
+                      "message": "Header X-API-Key é obrigatório."
+                    }
+                    """);
             return;
         }
 
@@ -67,14 +69,14 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         if (!valida) {
             response.setStatus(HttpStatus.FORBIDDEN.value());
-            response.setContentType("application/json;charset=UTF-8");
+            response.setContentType("application/json");
             response.getWriter().write("""
-                {
-                  "status": 403,
-                  "error": "Forbidden",
-                  "message": "API Key inválida ou inativa."
-                }
-                """);
+                    {
+                      "status": 403,
+                      "error": "Forbidden",
+                      "message": "API Key inválida ou inativa."
+                    }
+                    """);
             return;
         }
 

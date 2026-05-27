@@ -23,11 +23,17 @@ public class CorsConfig {
                 "http://localhost:5500",
                 "http://127.0.0.1:5500",
                 "http://localhost:8080",
-                "http://127.0.0.1:8080"
+                "http://127.0.0.1:8080",
+                "https://cauerls.github.io"
         ));
 
         config.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
         ));
 
         config.setAllowedHeaders(List.of(
@@ -41,7 +47,6 @@ public class CorsConfig {
         config.setExposedHeaders(List.of(
                 "X-API-Version",
                 "X-Idempotency-Key",
-                "X-Idempotent-Replayed",
                 "X-RateLimit-Limit",
                 "X-RateLimit-Remaining",
                 "Retry-After"
