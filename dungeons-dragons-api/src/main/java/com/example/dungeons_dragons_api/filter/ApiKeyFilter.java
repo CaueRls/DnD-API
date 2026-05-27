@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Component
@@ -24,6 +25,8 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             "/api-keys",
             "/swagger-ui",
             "/v3/api-docs",
+            "/swagger-resources",
+            "/webjars",
             "/h2-console"
     );
 
@@ -40,8 +43,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        boolean rotaPublica = ROTAS_PUBLICAS.stream()
-                .anyMatch(path::startsWith);
+        boolean rotaPublica = ROTAS_PUBLICAS.stream().anyMatch(path::startsWith);
 
         if (rotaPublica) {
             filterChain.doFilter(request, response);
@@ -51,15 +53,8 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         String apiKey = request.getHeader("X-API-Key");
 
         if (apiKey == null || apiKey.isBlank()) {
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.setContentType("application/json");
-            response.getWriter().write("""
-                    {
-                      "status": 401,
-                      "error": "Unauthorized",
-                      "message": "Header X-API-Key é obrigatório."
-                    }
-                    """);
+            writeError(response, request, HttpStatus.UNAUTHORIZED,
+                    "Header X-API-Key é obrigatório.");
             return;
         }
 
@@ -68,18 +63,34 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                 .isPresent();
 
         if (!valida) {
-            response.setStatus(HttpStatus.FORBIDDEN.value());
-            response.setContentType("application/json");
-            response.getWriter().write("""
-                    {
-                      "status": 403,
-                      "error": "Forbidden",
-                      "message": "API Key inválida ou inativa."
-                    }
-                    """);
+            writeError(response, request, HttpStatus.FORBIDDEN,
+                    "API Key inválida ou inativa.");
             return;
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void writeError(HttpServletResponse response,
+                            HttpServletRequest request,
+                            HttpStatus status,
+                            String message) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("""
+                {
+                  "timestamp": "%s",
+                  "status": %d,
+                  "error": "%s",
+                  "message": "%s",
+                  "path": "%s"
+                }
+                """.formatted(
+                OffsetDateTime.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                request.getRequestURI()
+        ));
     }
 }

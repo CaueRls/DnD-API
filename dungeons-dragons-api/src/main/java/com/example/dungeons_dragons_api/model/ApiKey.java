@@ -2,6 +2,7 @@ package com.example.dungeons_dragons_api.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,10 +21,8 @@ public class ApiKey {
     @Column(nullable = false)
     private String owner;
 
-    @Column(nullable = false)
-    private boolean active = true;
+    private boolean active;
 
-    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

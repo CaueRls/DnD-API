@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
+import java.time.OffsetDateTime;
 
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -22,49 +22,51 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Autowired
     private RateLimitConfig rateLimitConfig;
 
-    private static final List<String> ROTAS_PUBLICAS = List.of(
-            "/swagger-ui",
-            "/v3/api-docs",
-            "/h2-console"
-    );
-
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getRequestURI();
-
-        if (HttpMethod.OPTIONS.matches(request.getMethod())
-                || ROTAS_PUBLICAS.stream().anyMatch(path::startsWith)) {
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String ip = request.getRemoteAddr();
-        Bucket bucket = rateLimitConfig.resolveBucket(ip);
-
+        String client = resolveClient(request);
+        Bucket bucket = rateLimitConfig.resolveBucket(client);
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
 
-        response.addHeader("X-RateLimit-Limit", String.valueOf(rateLimitConfig.getLimiteRequisicoes()));
-        response.addHeader("X-RateLimit-Remaining", String.valueOf(probe.getRemainingTokens()));
+        response.setHeader("X-RateLimit-Limit", String.valueOf(rateLimitConfig.getLimiteRequisicoes()));
+        response.setHeader("X-RateLimit-Remaining", String.valueOf(probe.getRemainingTokens()));
 
         if (probe.isConsumed()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        long esperarEmSegundos = Math.max(1, probe.getNanosToWaitForRefill() / 1_000_000_000);
-        response.addHeader("Retry-After", String.valueOf(esperarEmSegundos));
+        long retryAfterSeconds = Math.max(1, probe.getNanosToWaitForRefill() / 1_000_000_000);
+
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType("application/json;charset=UTF-8");
+        response.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+        response.setHeader("X-RateLimit-Remaining", "0");
         response.getWriter().write("""
-            {
-              "status": 429,
-              "error": "Too Many Requests",
-              "message": "Limite de requisições excedido. Tente novamente em %d segundos."
-            }
-            """.formatted(esperarEmSegundos));
+                {
+                  "timestamp": "%s",
+                  "status": 429,
+                  "error": "Too Many Requests",
+                  "message": "Limite de requisições excedido. Tente novamente em %d segundos.",
+                  "path": "%s"
+                }
+                """.formatted(OffsetDateTime.now(), retryAfterSeconds, request.getRequestURI()));
+    }
+
+    private String resolveClient(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

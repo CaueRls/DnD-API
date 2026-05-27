@@ -2,6 +2,7 @@ package com.example.dungeons_dragons_api.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,13 +17,13 @@ public class IdempotencyRecord {
     @Column(unique = true, nullable = false)
     private String idempotencyKey;
 
-    @Column(columnDefinition = "TEXT")
+    @NotNull(message = "O corpo da resposta é obrigatório")
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String responseBody;
 
     @Column(nullable = false)
     private int responseStatus;
 
-    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

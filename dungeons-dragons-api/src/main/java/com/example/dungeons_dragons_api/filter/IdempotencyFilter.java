@@ -15,6 +15,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,10 +25,12 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     @Autowired
     private IdempotencyRepository idempotencyRepository;
 
-    private static final List<String> ROTAS_PUBLICAS_SEM_IDEMPOTENCIA = List.of(
+    private static final List<String> ROTAS_SEM_IDEMPOTENCIA = List.of(
             "/api-keys",
             "/swagger-ui",
             "/v3/api-docs",
+            "/swagger-resources",
+            "/webjars",
             "/h2-console"
     );
 
@@ -37,20 +40,15 @@ public class IdempotencyFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         if (!HttpMethod.POST.matches(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String path = request.getRequestURI();
-        boolean rotaPublica = ROTAS_PUBLICAS_SEM_IDEMPOTENCIA.stream().anyMatch(path::startsWith);
+        boolean rotaIgnorada = ROTAS_SEM_IDEMPOTENCIA.stream().anyMatch(path::startsWith);
 
-        if (rotaPublica) {
+        if (rotaIgnorada) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -62,15 +60,18 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("""
                     {
+                      "timestamp": "%s",
                       "status": 400,
                       "error": "Bad Request",
-                      "message": "Header X-Idempotency-Key é obrigatório em operações POST. Gere um UUID e envie no header para evitar criação duplicada."
+                      "message": "Header X-Idempotency-Key é obrigatório em operações POST.",
+                      "path": "%s"
                     }
-                    """);
+                    """.formatted(OffsetDateTime.now(), request.getRequestURI()));
             return;
         }
 
-        Optional<IdempotencyRecord> existing = idempotencyRepository.findByIdempotencyKey(idempotencyKey);
+        Optional<IdempotencyRecord> existing =
+                idempotencyRepository.findByIdempotencyKey(idempotencyKey);
 
         if (existing.isPresent()) {
             IdempotencyRecord record = existing.get();
@@ -82,20 +83,26 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             return;
         }
 
-        ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
+        ContentCachingResponseWrapper responseWrapper =
+                new ContentCachingResponseWrapper(response);
+
         filterChain.doFilter(request, responseWrapper);
 
-        String responseBody = new String(responseWrapper.getContentAsByteArray(), StandardCharsets.UTF_8);
         int responseStatus = responseWrapper.getStatus();
+        String responseBody = new String(
+                responseWrapper.getContentAsByteArray(),
+                StandardCharsets.UTF_8
+        );
 
-        IdempotencyRecord record = new IdempotencyRecord();
-        record.setIdempotencyKey(idempotencyKey);
-        record.setResponseBody(responseBody);
-        record.setResponseStatus(responseStatus);
-        idempotencyRepository.save(record);
+        if (responseStatus >= 200 && responseStatus < 300) {
+            IdempotencyRecord record = new IdempotencyRecord();
+            record.setIdempotencyKey(idempotencyKey);
+            record.setResponseBody(responseBody);
+            record.setResponseStatus(responseStatus);
+            idempotencyRepository.save(record);
+        }
 
         responseWrapper.setHeader("X-Idempotency-Key", idempotencyKey);
-        responseWrapper.setHeader("X-Idempotent-Replayed", "false");
         responseWrapper.copyBodyToResponse();
     }
 }

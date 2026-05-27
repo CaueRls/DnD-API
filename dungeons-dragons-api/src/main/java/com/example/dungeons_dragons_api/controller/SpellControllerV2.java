@@ -1,11 +1,10 @@
 package com.example.dungeons_dragons_api.controller;
 
+import com.example.dungeons_dragons_api.exception.ResourceAlreadyExistsException;
 import com.example.dungeons_dragons_api.exception.ResourceNotFoundException;
 import com.example.dungeons_dragons_api.model.Spell;
 import com.example.dungeons_dragons_api.repository.SpellRepository;
 import io.swagger.v3.oas.annotations.Operation;
-/*import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;*/
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -21,12 +20,15 @@ import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequestMapping("/v2/spells")
-@Tag(name = "Magias V2", description = "Versão 2 — use o header 'X-API-Version: v2'. Inclui o campo castingTime (tempo de conjuração).")
+@Tag(name = "Magias V2", description = "Versão 2 — inclui o campo castingTime, além dos campos básicos da V1.")
 public class SpellControllerV2 {
 
     private final SpellRepository repository;
@@ -51,11 +53,8 @@ public class SpellControllerV2 {
     @Operation(
             summary = "Lista todas as magias [V2]",
             operationId = "getAllSpellsV2",
-            description = "Requer header X-API-Version: v2. Retorna lista paginada incluindo o campo castingTime."
+            description = "Retorna lista paginada de magias incluindo o campo castingTime."
     )
-    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-            description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -68,11 +67,8 @@ public class SpellControllerV2 {
     @Operation(
             summary = "Busca uma magia pelo ID [V2]",
             operationId = "getSpellByIdV2",
-            description = "Requer header X-API-Version: v2. Retorna os detalhes incluindo o campo castingTime."
+            description = "Retorna os detalhes de uma magia específica, incluindo o campo castingTime."
     )
-    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-            description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "200", description = "Magia encontrada")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @GetMapping("/{id}")
@@ -85,12 +81,8 @@ public class SpellControllerV2 {
     @Operation(
             summary = "Cria uma nova magia [V2]",
             operationId = "createSpellV2",
-            description = "Requer header X-API-Version: v2. Suporta o campo castingTime. " +
-                    "Valores comuns: '1 action', '1 bonus action', '1 reaction', '1 minute', '1 hour'."
+            description = "Cadastra uma nova magia. Requer X-API-Key ativa e X-Idempotency-Key. Suporta castingTime."
     )
-    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-            description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = Spell.class),
@@ -128,22 +120,34 @@ public class SpellControllerV2 {
                     }))
     @ApiResponse(responseCode = "201", description = "Magia criada com sucesso")
     @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
+    @ApiResponse(responseCode = "409", description = "Já existe uma magia com este nome")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<EntityModel<Spell>> createSpell(
             @org.springframework.web.bind.annotation.RequestBody
             @Valid Spell spell) {
-        return new ResponseEntity<>(toModel(repository.save(spell)), HttpStatus.CREATED);
+
+        if (repository.existsByNameIgnoreCase(spell.getName())) {
+            throw new ResourceAlreadyExistsException(
+                    "Já existe uma magia com o nome '" + spell.getName() + "'.");
+        }
+
+        Spell saved = repository.save(spell);
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(saved.getId())
+                .toUri();
+
+        return ResponseEntity.created(location).body(toModel(saved));
     }
 
     @Operation(
             summary = "Atualiza uma magia existente [V2]",
             operationId = "updateSpellV2",
-            description = "Requer header X-API-Version: v2. Permite atualizar o campo castingTime além dos campos básicos."
+            description = "Permite atualizar castingTime além dos campos básicos."
     )
-    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-            description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
     @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
@@ -158,18 +162,15 @@ public class SpellControllerV2 {
         spell.setLevel(details.getLevel());
         spell.setDescription(details.getDescription());
         spell.setSchool(details.getSchool());
-        spell.setCastingTime(details.getCastingTime()); // ← V2 atualiza castingTime
+        spell.setCastingTime(details.getCastingTime());
         return ResponseEntity.ok(toModel(repository.save(spell)));
     }
 
     @Operation(
             summary = "Remove uma magia [V2]",
             operationId = "deleteSpellV2",
-            description = "Requer header X-API-Version: v2. Deleta permanentemente uma magia pelo ID."
+            description = "Deleta permanentemente uma magia pelo ID."
     )
-    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-            description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "204", description = "Magia removida com sucesso")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @DeleteMapping("/{id}")
@@ -182,11 +183,8 @@ public class SpellControllerV2 {
     @Operation(
             summary = "Busca magias pelo nome [V2]",
             operationId = "searchByNameV2",
-            description = "Requer header X-API-Version: v2. Retorna magias cujo nome contenha o termo informado. Inclui castingTime."
+            description = "Consulta personalizada: retorna magias cujo nome contenha o termo informado. Inclui castingTime."
     )
-    /*@Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-            description = "Deve ser 'v2' para acessar este endpoint",
-            schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))*/
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @GetMapping("/search")
     public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByName(

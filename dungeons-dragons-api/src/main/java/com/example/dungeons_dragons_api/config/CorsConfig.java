@@ -45,8 +45,10 @@ public class CorsConfig {
         ));
 
         config.setExposedHeaders(List.of(
+                "Location",
                 "X-API-Version",
                 "X-Idempotency-Key",
+                "X-Idempotent-Replayed",
                 "X-RateLimit-Limit",
                 "X-RateLimit-Remaining",
                 "Retry-After"
