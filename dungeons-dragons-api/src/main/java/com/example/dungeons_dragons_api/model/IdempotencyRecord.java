@@ -1,11 +1,7 @@
 package com.example.dungeons_dragons_api.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 @Entity
@@ -17,16 +13,12 @@ public class IdempotencyRecord {
     private Long id;
 
     @NotBlank(message = "A chave de idempotência é obrigatória")
-    @Size(max = 120, message = "A chave de idempotência deve ter no máximo 120 caracteres")
-    @Column(unique = true, nullable = false, length = 120)
+    @Column(unique = true, nullable = false)
     private String idempotencyKey;
 
-    @NotNull(message = "O corpo da resposta é obrigatório")
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String responseBody;
 
-    @Min(value = 100, message = "O status HTTP deve ser maior ou igual a 100")
-    @Max(value = 599, message = "O status HTTP deve ser menor ou igual a 599")
     @Column(nullable = false)
     private int responseStatus;
 

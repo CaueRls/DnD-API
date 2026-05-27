@@ -2,7 +2,6 @@ package com.example.dungeons_dragons_api.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,17 +13,15 @@ public class ApiKey {
     private Long id;
 
     @NotBlank(message = "A chave da API é obrigatória")
-    @Size(max = 120, message = "A chave da API deve ter no máximo 120 caracteres")
-    @Column(unique = true, nullable = false, length = 120)
+    @Column(unique = true, nullable = false)
     private String keyValue;
 
     @NotBlank(message = "O dono da chave é obrigatório")
-    @Size(min = 2, max = 80, message = "O dono da chave deve ter entre 2 e 80 caracteres")
-    @Column(nullable = false, length = 80)
+    @Column(nullable = false)
     private String owner;
 
     @Column(nullable = false)
-    private boolean active;
+    private boolean active = true;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

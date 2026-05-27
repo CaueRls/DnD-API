@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
@@ -23,14 +24,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 
 @RestController
 @RequestMapping("/spells")
 @Tag(
         name = "Magias por Header",
-        description = "Endpoint demonstrativo de versionamento via header X-API-Version. Use X-API-Version: v1 ou X-API-Version: v2."
+        description = "Endpoint demonstrativo de versionamento via header X-API-Version. Use v1 ou v2."
 )
+@SecurityRequirement(name = "X-API-Key")
 public class VersionedSpellController {
 
     private final SpellRepository repository;
@@ -43,280 +45,201 @@ public class VersionedSpellController {
         this.pagedAssembler = pagedAssembler;
     }
 
-    private EntityModel<Spell> toModelV1(Spell spell) {
-        return EntityModel.of(spell,
-                linkTo(methodOn(VersionedSpellController.class).getSpellByIdV1(spell.getId())).withSelfRel(),
-                linkTo(methodOn(VersionedSpellController.class).updateSpellV1(spell.getId(), null)).withRel("update"),
-                linkTo(methodOn(VersionedSpellController.class).deleteSpellV1(spell.getId())).withRel("delete"),
-                linkTo(methodOn(VersionedSpellController.class).getAllSpellsV1(Pageable.unpaged())).withRel("all-spells"),
-                linkTo(VersionedSpellController.class).slash("search").withRel("search-by-name"),
-                linkTo(VersionedSpellController.class).withRel("latest-version")
-        );
+    private boolean isV1(String version) {
+        return "v1".equalsIgnoreCase(version);
     }
 
-    private EntityModel<Spell> toModelV2(Spell spell) {
+    private EntityModel<Spell> toModel(Spell spell) {
         return EntityModel.of(spell,
-                linkTo(methodOn(VersionedSpellController.class).getSpellByIdV2(spell.getId())).withSelfRel(),
-                linkTo(methodOn(VersionedSpellController.class).updateSpellV2(spell.getId(), null)).withRel("update"),
-                linkTo(methodOn(VersionedSpellController.class).deleteSpellV2(spell.getId())).withRel("delete"),
-                linkTo(methodOn(VersionedSpellController.class).getAllSpellsV2(Pageable.unpaged())).withRel("all-spells"),
+                linkTo(VersionedSpellController.class).slash(spell.getId()).withSelfRel(),
+                linkTo(VersionedSpellController.class).slash(spell.getId()).withRel("update"),
+                linkTo(VersionedSpellController.class).slash(spell.getId()).withRel("delete"),
+                linkTo(VersionedSpellController.class).withRel("all-spells"),
                 linkTo(VersionedSpellController.class).slash("search").withRel("search-by-name"),
-                linkTo(VersionedSpellController.class).withRel("previous-version")
+                linkTo(SpellController.class).withRel("v1-url-version"),
+                linkTo(SpellControllerV2.class).withRel("v2-url-version")
         );
     }
 
     @Operation(
-            summary = "Lista todas as magias [Header V1]",
-            operationId = "getAllSpellsHeaderV1",
-            description = "Retorna uma lista paginada de magias usando versionamento por header. Na V1, o campo castingTime não é alterado pelos endpoints de criação/atualização.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    description = "Versão da API. Para este endpoint use v1.",
-                    schema = @Schema(type = "string", allowableValues = {"v1"}, defaultValue = "v1"))
+            summary = "Lista todas as magias usando versionamento por header",
+            operationId = "getAllSpellsHeaderVersioned",
+            description = "Retorna uma lista paginada de magias. Envie X-API-Version: v1 ou X-API-Version: v2 para demonstrar versionamento por cabeçalho.",
+            parameters = @Parameter(
+                    name = "X-API-Version",
+                    in = ParameterIn.HEADER,
+                    required = true,
+                    description = "Versão da API. Use v1 ou v2.",
+                    schema = @Schema(type = "string", allowableValues = {"v1", "v2"}, defaultValue = "v2")
+            )
     )
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
     @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
     @ApiResponse(responseCode = "429", description = "Limite de requisições excedido")
-    @GetMapping(headers = "X-API-Version=v1")
-    public ResponseEntity<PagedModel<EntityModel<Spell>>> getAllSpellsV1(@ParameterObject Pageable pageable) {
-        return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModelV1));
+    @GetMapping
+    public ResponseEntity<PagedModel<EntityModel<Spell>>> getAllSpells(
+            @RequestHeader(name = "X-API-Version", defaultValue = "v2") String version,
+            @ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModel));
     }
 
     @Operation(
-            summary = "Lista todas as magias [Header V2]",
-            operationId = "getAllSpellsHeaderV2",
-            description = "Retorna uma lista paginada de magias usando versionamento por header. A V2 inclui suporte completo ao campo castingTime.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    description = "Versão da API. Para este endpoint use v2.",
-                    schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
-    )
-    @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
-    @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @ApiResponse(responseCode = "429", description = "Limite de requisições excedido")
-    @GetMapping(headers = "X-API-Version=v2")
-    public ResponseEntity<PagedModel<EntityModel<Spell>>> getAllSpellsV2(@ParameterObject Pageable pageable) {
-        return ResponseEntity.ok(pagedAssembler.toModel(repository.findAll(pageable), this::toModelV2));
-    }
-
-    @Operation(
-            summary = "Busca uma magia pelo ID [Header V1]",
-            operationId = "getSpellByIdHeaderV1",
-            description = "Busca uma magia específica pelo ID usando X-API-Version: v1.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v1"}, defaultValue = "v1"))
+            summary = "Busca uma magia pelo ID usando versionamento por header",
+            operationId = "getSpellByIdHeaderVersioned",
+            description = "Busca uma magia específica pelo ID. Envie X-API-Version: v1 ou v2.",
+            parameters = @Parameter(
+                    name = "X-API-Version",
+                    in = ParameterIn.HEADER,
+                    required = true,
+                    description = "Versão da API. Use v1 ou v2.",
+                    schema = @Schema(type = "string", allowableValues = {"v1", "v2"}, defaultValue = "v2")
+            )
     )
     @ApiResponse(responseCode = "200", description = "Magia encontrada")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
     @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @GetMapping(value = "/{id}", headers = "X-API-Version=v1")
-    public ResponseEntity<EntityModel<Spell>> getSpellByIdV1(@PathVariable Long id) {
+    @GetMapping("/{id}")
+    public ResponseEntity<EntityModel<Spell>> getSpellById(
+            @RequestHeader(name = "X-API-Version", defaultValue = "v2") String version,
+            @PathVariable Long id) {
         Spell spell = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
-        return ResponseEntity.ok(toModelV1(spell));
+        return ResponseEntity.ok(toModel(spell));
     }
 
     @Operation(
-            summary = "Busca uma magia pelo ID [Header V2]",
-            operationId = "getSpellByIdHeaderV2",
-            description = "Busca uma magia específica pelo ID usando X-API-Version: v2. Inclui suporte ao campo castingTime.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
+            summary = "Cria uma nova magia usando versionamento por header",
+            operationId = "createSpellHeaderVersioned",
+            description = "Cria uma magia. Na versão v1, o campo castingTime é ignorado; na versão v2, ele é salvo normalmente.",
+            parameters = @Parameter(
+                    name = "X-API-Version",
+                    in = ParameterIn.HEADER,
+                    required = true,
+                    description = "Versão da API. Use v1 ou v2.",
+                    schema = @Schema(type = "string", allowableValues = {"v1", "v2"}, defaultValue = "v2")
+            ),
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "Dados para criação de uma magia.",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Spell.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "name": "Bola de Fogo",
+                                      "level": 3,
+                                      "description": "Uma rajada de chamas explode em um ponto escolhido.",
+                                      "school": "EVOCATION",
+                                      "castingTime": "1 action"
+                                    }
+                                    """)
+                    )
+            )
     )
-    @ApiResponse(responseCode = "200", description = "Magia encontrada")
-    @ApiResponse(responseCode = "404", description = "Magia não encontrada")
-    @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
-    @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @GetMapping(value = "/{id}", headers = "X-API-Version=v2")
-    public ResponseEntity<EntityModel<Spell>> getSpellByIdV2(@PathVariable Long id) {
-        Spell spell = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
-        return ResponseEntity.ok(toModelV2(spell));
-    }
-
-    @Operation(
-            summary = "Cria uma nova magia [Header V1]",
-            operationId = "createSpellHeaderV1",
-            description = "Cria uma magia usando X-API-Version: v1. A V1 ignora o campo castingTime para demonstrar diferença entre versões.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v1"}, defaultValue = "v1"))
-    )
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
-            description = "Dados para criação de uma magia na versão v1.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Spell.class),
-                    examples = @ExampleObject(name = "Bola de Fogo V1", value = """
-                    {
-                      "name": "Bola de Fogo",
-                      "level": 3,
-                      "description": "Uma rajada de chamas explode em um ponto escolhido.",
-                      "school": "EVOCATION"
-                    }
-                    """)))
     @ApiResponse(responseCode = "201", description = "Magia criada com sucesso")
     @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
     @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
     @ApiResponse(responseCode = "409", description = "Já existe uma magia com o mesmo nome")
     @ApiResponse(responseCode = "429", description = "Limite de requisições excedido")
-    @PostMapping(headers = "X-API-Version=v1")
-    public ResponseEntity<EntityModel<Spell>> createSpellV1(@RequestBody @Valid Spell spell) {
+    @PostMapping
+    public ResponseEntity<EntityModel<Spell>> createSpell(
+            @RequestHeader(name = "X-API-Version", defaultValue = "v2") String version,
+            @RequestBody @Valid Spell spell) {
         if (repository.existsByNameIgnoreCase(spell.getName())) {
             throw new ResourceAlreadyExistsException("Já existe uma magia com o nome '" + spell.getName() + "'.");
         }
-        spell.setCastingTime(null);
-        return new ResponseEntity<>(toModelV1(repository.save(spell)), HttpStatus.CREATED);
-    }
-
-    @Operation(
-            summary = "Cria uma nova magia [Header V2]",
-            operationId = "createSpellHeaderV2",
-            description = "Cria uma magia usando X-API-Version: v2. A V2 suporta o campo castingTime.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
-    )
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
-            description = "Dados para criação de uma magia na versão v2.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Spell.class),
-                    examples = @ExampleObject(name = "Bola de Fogo V2", value = """
-                    {
-                      "name": "Bola de Fogo",
-                      "level": 3,
-                      "description": "Uma rajada de chamas explode em um ponto escolhido.",
-                      "school": "EVOCATION",
-                      "castingTime": "1 action"
-                    }
-                    """)))
-    @ApiResponse(responseCode = "201", description = "Magia criada com sucesso")
-    @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
-    @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
-    @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @ApiResponse(responseCode = "409", description = "Já existe uma magia com o mesmo nome")
-    @ApiResponse(responseCode = "429", description = "Limite de requisições excedido")
-    @PostMapping(headers = "X-API-Version=v2")
-    public ResponseEntity<EntityModel<Spell>> createSpellV2(@RequestBody @Valid Spell spell) {
-        if (repository.existsByNameIgnoreCase(spell.getName())) {
-            throw new ResourceAlreadyExistsException("Já existe uma magia com o nome '" + spell.getName() + "'.");
+        if (isV1(version)) {
+            spell.setCastingTime(null);
         }
-        return new ResponseEntity<>(toModelV2(repository.save(spell)), HttpStatus.CREATED);
+        return new ResponseEntity<>(toModel(repository.save(spell)), HttpStatus.CREATED);
     }
 
     @Operation(
-            summary = "Atualiza uma magia [Header V1]",
-            operationId = "updateSpellHeaderV1",
-            description = "Atualiza uma magia usando X-API-Version: v1. A V1 não atualiza castingTime.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v1"}, defaultValue = "v1"))
+            summary = "Atualiza uma magia usando versionamento por header",
+            operationId = "updateSpellHeaderVersioned",
+            description = "Atualiza uma magia. Na versão v1, o campo castingTime não é atualizado; na versão v2, ele é atualizado normalmente.",
+            parameters = @Parameter(
+                    name = "X-API-Version",
+                    in = ParameterIn.HEADER,
+                    required = true,
+                    description = "Versão da API. Use v1 ou v2.",
+                    schema = @Schema(type = "string", allowableValues = {"v1", "v2"}, defaultValue = "v2")
+            )
     )
     @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
     @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
     @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @PutMapping(value = "/{id}", headers = "X-API-Version=v1")
-    public ResponseEntity<EntityModel<Spell>> updateSpellV1(@PathVariable Long id, @RequestBody @Valid Spell details) {
+    @PutMapping("/{id}")
+    public ResponseEntity<EntityModel<Spell>> updateSpell(
+            @RequestHeader(name = "X-API-Version", defaultValue = "v2") String version,
+            @PathVariable Long id,
+            @RequestBody @Valid Spell details) {
         Spell spell = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
+
         spell.setName(details.getName());
         spell.setLevel(details.getLevel());
         spell.setDescription(details.getDescription());
         spell.setSchool(details.getSchool());
-        return ResponseEntity.ok(toModelV1(repository.save(spell)));
+
+        if (!isV1(version)) {
+            spell.setCastingTime(details.getCastingTime());
+        }
+
+        return ResponseEntity.ok(toModel(repository.save(spell)));
     }
 
     @Operation(
-            summary = "Atualiza uma magia [Header V2]",
-            operationId = "updateSpellHeaderV2",
-            description = "Atualiza uma magia usando X-API-Version: v2. A V2 permite atualizar castingTime.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
-    )
-    @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
-    @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
-    @ApiResponse(responseCode = "404", description = "Magia não encontrada")
-    @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
-    @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @PutMapping(value = "/{id}", headers = "X-API-Version=v2")
-    public ResponseEntity<EntityModel<Spell>> updateSpellV2(@PathVariable Long id, @RequestBody @Valid Spell details) {
-        Spell spell = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
-        spell.setName(details.getName());
-        spell.setLevel(details.getLevel());
-        spell.setDescription(details.getDescription());
-        spell.setSchool(details.getSchool());
-        spell.setCastingTime(details.getCastingTime());
-        return ResponseEntity.ok(toModelV2(repository.save(spell)));
-    }
-
-    @Operation(
-            summary = "Remove uma magia [Header V1]",
-            operationId = "deleteSpellHeaderV1",
-            description = "Remove uma magia usando X-API-Version: v1.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v1"}, defaultValue = "v1"))
+            summary = "Remove uma magia usando versionamento por header",
+            operationId = "deleteSpellHeaderVersioned",
+            description = "Remove uma magia. Envie X-API-Version: v1 ou v2.",
+            parameters = @Parameter(
+                    name = "X-API-Version",
+                    in = ParameterIn.HEADER,
+                    required = true,
+                    description = "Versão da API. Use v1 ou v2.",
+                    schema = @Schema(type = "string", allowableValues = {"v1", "v2"}, defaultValue = "v2")
+            )
     )
     @ApiResponse(responseCode = "204", description = "Magia removida com sucesso")
     @ApiResponse(responseCode = "404", description = "Magia não encontrada")
     @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
     @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @DeleteMapping(value = "/{id}", headers = "X-API-Version=v1")
-    public ResponseEntity<Void> deleteSpellV1(@PathVariable Long id) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSpell(
+            @RequestHeader(name = "X-API-Version", defaultValue = "v2") String version,
+            @PathVariable Long id) {
         repository.delete(repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id)));
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "Remove uma magia [Header V2]",
-            operationId = "deleteSpellHeaderV2",
-            description = "Remove uma magia usando X-API-Version: v2.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
-    )
-    @ApiResponse(responseCode = "204", description = "Magia removida com sucesso")
-    @ApiResponse(responseCode = "404", description = "Magia não encontrada")
-    @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
-    @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @DeleteMapping(value = "/{id}", headers = "X-API-Version=v2")
-    public ResponseEntity<Void> deleteSpellV2(@PathVariable Long id) {
-        repository.delete(repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id)));
-        return ResponseEntity.noContent().build();
-    }
-
-    @Operation(
-            summary = "Busca magias pelo nome [Header V1]",
-            operationId = "searchSpellByNameHeaderV1",
-            description = "Consulta personalizada por entidade. Busca magias cujo nome contenha o termo informado usando X-API-Version: v1.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v1"}, defaultValue = "v1"))
+            summary = "Busca magias pelo nome usando versionamento por header",
+            operationId = "searchSpellByNameHeaderVersioned",
+            description = "Consulta personalizada por entidade. Busca magias cujo nome contenha o termo informado. Envie X-API-Version: v1 ou v2.",
+            parameters = @Parameter(
+                    name = "X-API-Version",
+                    in = ParameterIn.HEADER,
+                    required = true,
+                    description = "Versão da API. Use v1 ou v2.",
+                    schema = @Schema(type = "string", allowableValues = {"v1", "v2"}, defaultValue = "v2")
+            )
     )
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
     @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
     @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @GetMapping(value = "/search", headers = "X-API-Version=v1")
-    public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByNameV1(
+    @GetMapping("/search")
+    public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByName(
+            @RequestHeader(name = "X-API-Version", defaultValue = "v2") String version,
             @RequestParam String name,
             @ParameterObject Pageable pageable) {
         return ResponseEntity.ok(pagedAssembler.toModel(
-                repository.findByNameContainingIgnoreCase(name, pageable), this::toModelV1));
-    }
-
-    @Operation(
-            summary = "Busca magias pelo nome [Header V2]",
-            operationId = "searchSpellByNameHeaderV2",
-            description = "Consulta personalizada por entidade. Busca magias cujo nome contenha o termo informado usando X-API-Version: v2.",
-            parameters = @Parameter(name = "X-API-Version", in = ParameterIn.HEADER, required = true,
-                    schema = @Schema(type = "string", allowableValues = {"v2"}, defaultValue = "v2"))
-    )
-    @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso")
-    @ApiResponse(responseCode = "401", description = "Header X-API-Key ausente")
-    @ApiResponse(responseCode = "403", description = "API Key inválida ou inativa")
-    @GetMapping(value = "/search", headers = "X-API-Version=v2")
-    public ResponseEntity<PagedModel<EntityModel<Spell>>> searchByNameV2(
-            @RequestParam String name,
-            @ParameterObject Pageable pageable) {
-        return ResponseEntity.ok(pagedAssembler.toModel(
-                repository.findByNameContainingIgnoreCase(name, pageable), this::toModelV2));
+                repository.findByNameContainingIgnoreCase(name, pageable), this::toModel));
     }
 }
