@@ -14,8 +14,10 @@ import org.springframework.context.annotation.Configuration;
 @OpenAPIDefinition(
         info = @Info(
                 title = "DnD API",
-                version = "0.1.0",
-                description = "Api criada para criar e verificar informações sobre o jogo Dungeons and Dragons.",
+                version = "1.0.0",
+                description = "API para criar e consultar informações de Dungeons & Dragons. " +
+                        "Recursos implementados: CRUD paginado, HATEOAS, Bean Validation, API Key, " +
+                        "idempotência com X-Idempotency-Key, rate limiting, CORS e versionamento por X-API-Version.",
                 contact = @Contact(
                         name = "Cauê Rodrigues",
                         email = "rlscaue2@gmail.com"
@@ -25,17 +27,24 @@ import org.springframework.context.annotation.Configuration;
                         url = "https://opensource.org/licenses/MIT"
                 )
         ),
-        // ← diz ao Swagger que TODOS os endpoints precisam do X-API-Key
-        security = @SecurityRequirement(name = "X-API-Key")
+        security = {
+                @SecurityRequirement(name = "X-API-Key"),
+                @SecurityRequirement(name = "X-API-Version")
+        }
 )
-// ← define como o header deve ser enviado
 @SecurityScheme(
         name = "X-API-Key",
         type = SecuritySchemeType.APIKEY,
         in = SecuritySchemeIn.HEADER,
         paramName = "X-API-Key",
-        description = "Chave de API necessária para acessar os endpoints protegidos. " +
-                "Gere uma chave em POST /api-keys antes de usar."
+        description = "Chave de API necessária para acessar os endpoints protegidos. Gere uma chave em POST /api-keys?owner=seu-nome."
+)
+@SecurityScheme(
+        name = "X-API-Version",
+        type = SecuritySchemeType.APIKEY,
+        in = SecuritySchemeIn.HEADER,
+        paramName = "X-API-Version",
+        description = "Versão da API. Use v1 ou v2 nos endpoints versionados por header, por exemplo: GET /spells com X-API-Version: v2."
 )
 public class OpenApiConfig {
 }
