@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
+import com.example.dungeons_dragons_api.model.SpellRequestV1;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -117,37 +118,40 @@ public class SpellController {
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<EntityModel<Spell>> createSpell(
             @org.springframework.web.bind.annotation.RequestBody
-            @Valid Spell spell) {
+            @Valid SpellRequestV1 request) {  // ← mudou para DTO
 
-        // ← verificação de duplicidade
-        if (repository.existsByNameIgnoreCase(spell.getName())) {
+        if (repository.existsByNameIgnoreCase(request.getName())) {
             throw new ResourceAlreadyExistsException(
-                    "Já existe uma magia com o nome '" + spell.getName() + "'.");
+                    "Já existe uma magia com o nome '" + request.getName() + "'.");
         }
+
+        // Converte DTO para entidade
+        Spell spell = new Spell();
+        spell.setName(request.getName());
+        spell.setLevel(request.getLevel());
+        spell.setDescription(request.getDescription());
+        spell.setSchool(request.getSchool());
+        // campos V2 ficam null — V1 não os conhece
 
         return new ResponseEntity<>(toModel(repository.save(spell)), HttpStatus.CREATED);
     }
 
-    @Operation(
-            summary = "Atualiza uma magia existente",
-            operationId = "updateSpell",
-            description = "Versão 1. Atualiza os campos básicos de uma magia. Não atualiza castingTime."
-    )
-    @ApiResponse(responseCode = "200", description = "Magia atualizada com sucesso")
-    @ApiResponse(responseCode = "400", description = "Dados inválidos fornecidos")
-    @ApiResponse(responseCode = "404", description = "Magia não encontrada")
+    // Método updateSpell — V1 também só atualiza campos básicos
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<Spell>> updateSpell(
             @PathVariable Long id,
             @org.springframework.web.bind.annotation.RequestBody
-            @Valid Spell details) {
+            @Valid SpellRequestV1 request) {  // ← mudou para DTO
+
         Spell spell = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Magia não encontrada com o ID: " + id));
-        spell.setName(details.getName());
-        spell.setLevel(details.getLevel());
-        spell.setDescription(details.getDescription());
-        spell.setSchool(details.getSchool());
-        // ← V1 não atualiza castingTime intencionalmente
+
+        spell.setName(request.getName());
+        spell.setLevel(request.getLevel());
+        spell.setDescription(request.getDescription());
+        spell.setSchool(request.getSchool());
+        // V1 não toca nos campos V2 intencionalmente
+
         return ResponseEntity.ok(toModel(repository.save(spell)));
     }
 

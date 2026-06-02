@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -19,12 +20,18 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     @Autowired
     private ApiKeyRepository apiKeyRepository;
 
-    // Rotas que NÃO precisam de API Key
     private static final List<String> ROTAS_PUBLICAS = List.of(
+            "/",
+            "/index.html",
+            "/favicon.ico",
+            "/api-keys",
             "/swagger-ui",
             "/v3/api-docs",
             "/h2-console",
-            "/api-keys"
+            "/css",
+            "/js",
+            "/assets",
+            "/images"
     );
 
     @Override
@@ -35,33 +42,34 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Verifica se é rota pública — se for, deixa passar sem validar
-        boolean isPublica = ROTAS_PUBLICAS.stream()
-                .anyMatch(path::startsWith);
-
-        if (isPublica) {
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Busca o header X-API-Key
+        boolean rotaPublica = ROTAS_PUBLICAS.stream()
+                .anyMatch(path::startsWith);
+
+        if (rotaPublica) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String apiKey = request.getHeader("X-API-Key");
 
-        // Header ausente
         if (apiKey == null || apiKey.isBlank()) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType("application/json");
             response.getWriter().write("""
-                {
-                  "status": 401,
-                  "error": "Unauthorized",
-                  "message": "Header X-API-Key é obrigatório."
-                }
-                """);
+                    {
+                      "status": 401,
+                      "error": "Unauthorized",
+                      "message": "Header X-API-Key é obrigatório."
+                    }
+                    """);
             return;
         }
 
-        // Valida a chave no banco
         boolean valida = apiKeyRepository
                 .findByKeyValueAndActiveTrue(apiKey)
                 .isPresent();
@@ -70,16 +78,15 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             response.setStatus(HttpStatus.FORBIDDEN.value());
             response.setContentType("application/json");
             response.getWriter().write("""
-                {
-                  "status": 403,
-                  "error": "Forbidden",
-                  "message": "API Key inválida ou inativa."
-                }
-                """);
+                    {
+                      "status": 403,
+                      "error": "Forbidden",
+                      "message": "API Key inválida ou inativa."
+                    }
+                    """);
             return;
         }
 
-        // Chave válida — deixa passar
         filterChain.doFilter(request, response);
     }
 }

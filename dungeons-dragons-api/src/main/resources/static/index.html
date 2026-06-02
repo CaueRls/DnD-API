@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚔️ Dungeons & Dragons API</title>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cinzel:wght@400;600;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --parchment: #f4e4bc;
+            --parchment-dark: #e8d5a3;
+            --ink: #2c1810;
+            --ink-light: #4a2c1a;
+            --blood: #8b1a1a;
+            --gold: #c9a227;
+            --gold-light: #f0c040;
+            --stone: #5a4a3a;
+            --stone-light: #7a6a5a;
+            --shadow: rgba(44, 24, 16, 0.4);
+            --fire: #e85d04;
+            --magic: #6a0dad;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Crimson Text', serif;
+            background-color: #1a0f0a;
+            background-image:
+                    radial-gradient(ellipse at 20% 20%, rgba(139,26,26,0.15) 0%, transparent 50%),
+                    radial-gradient(ellipse at 80% 80%, rgba(106,13,173,0.1) 0%, transparent 50%),
+                    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a227' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            min-height: 100vh;
+            color: var(--ink);
+        }
+
+        /* ── HEADER ── */
+        header {
+            background: linear-gradient(180deg, #0d0705 0%, #1a0f0a 100%);
+            border-bottom: 3px solid var(--gold);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(201,162,39,0.2);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+            filter: drop-shadow(0 0 10px var(--gold));
+            animation: flicker 3s infinite;
+        }
+
+        @keyframes flicker {
+            0%, 95%, 100% { filter: drop-shadow(0 0 10px var(--gold)); }
+            96% { filter: drop-shadow(0 0 4px var(--gold)); }
+            97% { filter: drop-shadow(0 0 12px var(--gold)); }
+        }
+
+        .logo h1 {
+            font-family: 'Cinzel', serif;
+            font-weight: 900;
+            font-size: 1.6rem;
+            color: var(--gold);
+            text-shadow: 0 0 20px rgba(201,162,39,0.5);
+            letter-spacing: 2px;
+        }
+
+        .logo span {
+            font-family: 'Crimson Text', serif;
+            font-size: 0.85rem;
+            color: var(--stone-light);
+            display: block;
+            font-style: italic;
+        }
+
+        /* ── API KEY BAR ── */
+        .api-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(201,162,39,0.08);
+            border: 1px solid rgba(201,162,39,0.3);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+        }
+
+        .api-bar label {
+            font-family: 'Cinzel', serif;
+            font-size: 0.75rem;
+            color: var(--gold);
+            white-space: nowrap;
+        }
+
+        .api-bar input {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(201,162,39,0.4);
+            border-radius: 4px;
+            padding: 0.35rem 0.75rem;
+            color: var(--parchment);
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            width: 280px;
+        }
+
+        .api-bar input:focus { outline: none; border-color: var(--gold); }
+
+        .btn-save-key {
+            background: var(--gold);
+            color: var(--ink);
+            border: none;
+            border-radius: 4px;
+            padding: 0.35rem 0.9rem;
+            font-family: 'Cinzel', serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-save-key:hover { background: var(--gold-light); }
+
+        /* ── MAIN LAYOUT ── */
+        .container {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: calc(100vh - 80px);
+        }
+
+        /* ── SIDEBAR ── */
+        aside {
+            background: linear-gradient(180deg, #150c08 0%, #1f1208 100%);
+            border-right: 2px solid rgba(201,162,39,0.3);
+            padding: 1.5rem 0;
+            position: sticky;
+            top: 80px;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-family: 'Cinzel', serif;
+            font-size: 0.7rem;
+            color: var(--stone-light);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            padding: 0 1.5rem 1rem;
+            border-bottom: 1px solid rgba(201,162,39,0.15);
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            color: var(--stone-light);
+            font-family: 'Cinzel', serif;
+            font-size: 0.85rem;
+        }
+
+        .nav-item:hover {
+            background: rgba(201,162,39,0.08);
+            color: var(--gold);
+            border-left-color: var(--gold);
+        }
+
+        .nav-item.active {
+            background: rgba(201,162,39,0.12);
+            color: var(--gold);
+            border-left-color: var(--gold);
+        }
+
+        .nav-item .icon { font-size: 1.2rem; }
+
+        /* ── MAIN CONTENT ── */
+        main {
+            padding: 2rem;
+            background: rgba(244,228,188,0.03);
+        }
+
+        /* ── SECTION HEADER ── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(201,162,39,0.3);
+        }
+
+        .section-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1.6rem;
+            color: var(--gold);
+            text-shadow: 0 0 15px rgba(201,162,39,0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* ── BUTTONS ── */
+        .btn {
+            font-family: 'Cinzel', serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--blood), #a52020);
+            color: var(--parchment);
+            border: 1px solid rgba(201,162,39,0.4);
+            box-shadow: 0 2px 8px rgba(139,26,26,0.4);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #a52020, var(--blood));
+            box-shadow: 0 4px 12px rgba(139,26,26,0.6);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(201,162,39,0.15);
+            color: var(--gold);
+            border: 1px solid rgba(201,162,39,0.4);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(201,162,39,0.25);
+            border-color: var(--gold);
+        }
+
+        .btn-danger {
+            background: rgba(139,26,26,0.2);
+            color: #e05555;
+            border: 1px solid rgba(139,26,26,0.4);
+        }
+
+        .btn-danger:hover {
+            background: rgba(139,26,26,0.4);
+            border-color: #e05555;
+        }
+
+        .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.7rem; }
+
+        /* ── CARDS GRID ── */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #2a1a0e 0%, #1f1208 100%);
+            border: 1px solid rgba(201,162,39,0.25);
+            border-radius: 8px;
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover {
+            border-color: rgba(201,162,39,0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .card:hover::before { opacity: 1; }
+
+        .card-id {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            font-family: 'Cinzel', serif;
+            font-size: 0.65rem;
+            color: var(--stone-light);
+            background: rgba(0,0,0,0.3);
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            border: 1px solid rgba(201,162,39,0.15);
+        }
+
+        .card-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1rem;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+            padding-right: 3rem;
+        }
+
+        .card-badge {
+            display: inline-block;
+            font-family: 'Cinzel', serif;
+            font-size: 0.65rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 3px;
+            margin-bottom: 0.6rem;
+            background: rgba(139,26,26,0.3);
+            color: #e07070;
+            border: 1px solid rgba(139,26,26,0.4);
+        }
+
+        .card-badge.magic {
+            background: rgba(106,13,173,0.3);
+            color: #c080ff;
+            border-color: rgba(106,13,173,0.4);
+        }
+
+        .card-badge.nature {
+            background: rgba(34,85,34,0.3);
+            color: #80c080;
+            border-color: rgba(34,85,34,0.4);
+        }
+
+        .card-desc {
+            font-size: 0.9rem;
+            color: var(--parchment-dark);
+            line-height: 1.5;
+            margin-bottom: 0.75rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.4rem;
+            margin: 0.75rem 0;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(201,162,39,0.15);
+            border-radius: 4px;
+            padding: 0.4rem;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-family: 'Cinzel', serif;
+            font-size: 0.55rem;
+            color: var(--stone-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gold);
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(201,162,39,0.1);
+        }
+
+        /* ── PAGINATION ── */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(201,162,39,0.15);
+        }
+
+        .page-info {
+            font-family: 'Cinzel', serif;
+            font-size: 0.8rem;
+            color: var(--stone-light);
+            padding: 0 1rem;
+        }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: linear-gradient(135deg, #2a1a0e, #1a0f0a);
+            border: 2px solid var(--gold);
+            border-radius: 12px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 560px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(201,162,39,0.1);
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(201,162,39,0.3);
+        }
+
+        .modal-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1.2rem;
+            color: var(--gold);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--stone-light);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0.2rem;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover { color: var(--blood); }
+
+        /* ── FORM ── */
+        .form-group { margin-bottom: 1.1rem; }
+
+        .form-label {
+            display: block;
+            font-family: 'Cinzel', serif;
+            font-size: 0.75rem;
+            color: var(--gold);
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(201,162,39,0.3);
+            border-radius: 6px;
+            padding: 0.65rem 0.9rem;
+            color: var(--parchment);
+            font-family: 'Crimson Text', serif;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--gold);
+            box-shadow: 0 0 0 2px rgba(201,162,39,0.15);
+        }
+
+        .form-control option { background: #1a0f0a; }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 90px;
+            line-height: 1.5;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(201,162,39,0.15);
+        }
+
+        /* ── TOAST ── */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            background: #1f1208;
+            border-radius: 8px;
+            padding: 0.9rem 1.2rem;
+            min-width: 280px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            animation: toastIn 0.3s ease;
+            border-left: 4px solid var(--gold);
+        }
+
+        .toast.success { border-left-color: #4caf50; }
+        .toast.error { border-left-color: var(--blood); }
+        .toast.warning { border-left-color: var(--fire); }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .toast-icon { font-size: 1.3rem; }
+
+        .toast-text {
+            font-family: 'Crimson Text', serif;
+            font-size: 0.95rem;
+            color: var(--parchment);
+            flex: 1;
+        }
+
+        /* ── LOADING ── */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            gap: 1rem;
+            color: var(--stone-light);
+            font-family: 'Cinzel', serif;
+            font-size: 0.9rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(201,162,39,0.2);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--stone-light);
+        }
+
+        .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+
+        .empty-state p {
+            font-family: 'Cinzel', serif;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* ── SEARCH BAR ── */
+        .search-bar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-bar input {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(201,162,39,0.3);
+            border-radius: 6px;
+            padding: 0.6rem 1rem;
+            color: var(--parchment);
+            font-family: 'Crimson Text', serif;
+            font-size: 1rem;
+        }
+
+        .search-bar input:focus { outline: none; border-color: var(--gold); }
+        .search-bar input::placeholder { color: var(--stone-light); }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0d0705; }
+        ::-webkit-scrollbar-thumb { background: rgba(201,162,39,0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(201,162,39,0.5); }
+
+        /* ── DELETE CONFIRM ── */
+        .confirm-modal .modal { max-width: 400px; text-align: center; }
+        .confirm-modal .confirm-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .confirm-modal p { color: var(--parchment-dark); margin-bottom: 1.5rem; font-size: 1rem; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+    <div class="logo">
+        <span class="logo-icon">🐉</span>
+        <div>
+            <h1>DUNGEONS & DRAGONS</h1>
+            <span>Grimório da API</span>
+        </div>
+    </div>
+    <div class="api-bar">
+        <label>⚔️ API KEY</label>
+        <input type="password" id="apiKeyInput" placeholder="Cole sua chave de API aqui...">
+        <button class="btn-save-key" onclick="saveApiKey()">Invocar</button>
+        <button class="btn-save-key" onclick="generateApiKey()">Gerar</button>
+    </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="container">
+
+    <!-- SIDEBAR -->
+    <aside>
+        <div class="sidebar-title">Grimório</div>
+        <div class="nav-item active" onclick="navigate('spells')">
+            <span class="icon">✨</span> Magias
+        </div>
+        <div class="nav-item" onclick="navigate('classes')">
+            <span class="icon">🛡️</span> Classes
+        </div>
+        <div class="nav-item" onclick="navigate('subclasses')">
+            <span class="icon">📜</span> Subclasses
+        </div>
+        <div class="nav-item" onclick="navigate('monsters')">
+            <span class="icon">👹</span> Monstros
+        </div>
+        <div class="nav-item" onclick="navigate('monster-stats')">
+            <span class="icon">⚔️</span> Atributos
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main id="main-content">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <span>Conjurando magias...</span>
+        </div>
+    </main>
+</div>
+
+<!-- MODAL FORM -->
+<div class="modal-overlay" id="formModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">Novo Registro</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMAÇÃO DELETE -->
+<div class="modal-overlay confirm-modal" id="confirmModal">
+    <div class="modal">
+        <div class="confirm-icon">💀</div>
+        <h2 class="modal-title" style="margin-bottom:1rem">Confirmar Exclusão</h2>
+        <p id="confirmText">Tem certeza que deseja deletar este registro? Esta ação não pode ser desfeita.</p>
+        <div class="form-actions">
+            <button class="btn btn-secondary" onclick="closeConfirm()">Cancelar</button>
+            <button class="btn btn-danger" id="confirmBtn">⚔️ Deletar</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+    const BASE_URL = window.location.origin;
+    // Magias usam /v2/spells. O header X-API-Version continua sendo enviado para demonstrar versionamento.
+    const ENDPOINTS = {
+        spells: '/v2/spells',
+        classes: '/classes',
+        subclasses: '/subclasses',
+        monsters: '/monsters',
+        'monster-stats': '/monster-stats'
+    };
+    function getEndpoint(section = currentSection) { return ENDPOINTS[section]; }
+    let currentSection = 'spells';
+    let currentPage = 0;
+    let totalPages = 0;
+    let editingId = null;
+
+    // ── API KEY ──
+    function getApiKey() { return localStorage.getItem('dnd_api_key') || ''; }
+    function saveApiKey() {
+        const key = document.getElementById('apiKeyInput').value.trim();
+        if (!key) return showToast('Cole uma API Key válida!', 'warning');
+        localStorage.setItem('dnd_api_key', key);
+        showToast('⚔️ API Key salva com sucesso!', 'success');
+        navigate(currentSection);
+    }
+
+    function getPostHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'X-API-Key': getApiKey(),
+            'X-API-Version': 'v2',
+            'X-Idempotency-Key': crypto.randomUUID()
+        };
+    }
+    async function generateApiKey() {
+        try {
+            const res = await fetch(`${BASE_URL}/api-keys?owner=caue`, {
+                method: 'POST'
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                return showToast(`Erro ao gerar API Key: ${data.message || res.status}`, 'error');
+            }
+
+            localStorage.setItem('dnd_api_key', data.keyValue);
+            document.getElementById('apiKeyInput').value = data.keyValue;
+
+            showToast('API Key gerada e salva com sucesso!', 'success');
+            navigate(currentSection);
+
+        } catch (e) {
+            showToast('Não foi possível gerar a API Key. Verifique se o backend está rodando.', 'error');
+        }
+    }
+
+    function getHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'X-API-Key': getApiKey(),
+            'X-API-Version': 'v2'
+        };
+    }
+
+    // ── NAVIGATION ──
+    function navigate(section) {
+        currentSection = section;
+        currentPage = 0;
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => {
+            if (el.onclick.toString().includes(`'${section}'`)) el.classList.add('active');
+        });
+        loadSection();
+    }
+
+    // ── LOAD SECTION ──
+    async function loadSection(page = 0) {
+        currentPage = page;
+        const main = document.getElementById('main-content');
+        main.innerHTML = `<div class="loading"><div class="loading-spinner"></div><span>Invocando dados...</span></div>`;
+
+        const configs = {
+            spells: { title: '✨ Magias', icon: '✨', endpoint: getEndpoint('spells'), searchParam: 'name' },
+            classes: { title: '🛡️ Classes de Personagem', icon: '🛡️', endpoint: getEndpoint('classes'), searchParam: 'name' },
+            subclasses: { title: '📜 Subclasses', icon: '📜', endpoint: getEndpoint('subclasses'), searchParam: 'name' },
+            monsters: { title: '👹 Monstros', icon: '👹', endpoint: getEndpoint('monsters'), searchParam: 'type' },
+            'monster-stats': { title: '⚔️ Atributos de Monstros', icon: '⚔️', endpoint: getEndpoint('monster-stats'), searchParam: null }
+        };
+
+        const config = configs[currentSection];
+
+        try {
+            const res = await fetch(`${BASE_URL}${config.endpoint}?page=${page}&size=9`, { headers: getHeaders() });
+            const data = await res.json();
+
+            if (!res.ok) return renderError(res.status, data.message);
+
+            const items = data._embedded ? Object.values(data._embedded)[0] : [];
+            totalPages = data.page?.totalPages || 1;
+
+            main.innerHTML = `
+      <div class="section-header">
+        <h2 class="section-title">${config.title}</h2>
+        <button class="btn btn-primary" onclick="openCreate()">+ Novo Registro</button>
+      </div>
+      ${config.searchParam ? `
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Buscar por ${config.searchParam}..." onkeydown="if(event.key==='Enter') doSearch()">
+        <button class="btn btn-secondary" onclick="doSearch()">🔍 Buscar</button>
+        <button class="btn btn-secondary" onclick="loadSection(0)">↺ Limpar</button>
+      </div>` : ''}
+      <div class="cards-grid" id="cardsGrid">
+        ${items.length ? items.map(item => renderCard(item)).join('') : renderEmpty()}
+      </div>
+      ${renderPagination()}
+    `;
+        } catch(e) {
+            renderError(0, 'Não foi possível conectar à API. Verifique se está rodando.');
+        }
+    }
+
+    // ── RENDER CARD ──
+    function renderCard(item) {
+        const s = currentSection;
+        let content = '';
+
+        if (s === 'spells') {
+            content = `
+      <span class="card-badge magic">Nível ${item.level} — ${item.school}</span>
+      <p class="card-desc">${item.description}</p>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.35rem;margin-top:0.6rem;color:var(--parchment-dark);font-size:0.8rem">
+        ${item.castingTime ? `<span>⏱️ ${item.castingTime}</span>` : ''}
+        ${item.range ? `<span>🎯 ${item.range}</span>` : ''}
+        ${item.components ? `<span>🧪 ${item.components}</span>` : ''}
+        ${item.duration ? `<span>⌛ ${item.duration}</span>` : ''}
+        ${item.concentration ? `<span>🧠 Concentração</span>` : ''}
+        ${item.ritual ? `<span>📜 Ritual</span>` : ''}
+        ${item.damageType ? `<span>🔥 ${item.damageType}</span>` : ''}
+        ${item.savingThrow ? `<span>🛡️ ${item.savingThrow}</span>` : ''}
+      </div>
+    `;
+        } else if (s === 'classes') {
+            content = `
+      <span class="card-badge">Dado: ${item.hitDie}</span>
+      <p class="card-desc">${item.description}</p>
+    `;
+        } else if (s === 'subclasses') {
+            content = `
+      <span class="card-badge">${item.characterClass?.name || 'Classe'}</span>
+      <p class="card-desc">${item.description}</p>
+    `;
+        } else if (s === 'monsters') {
+            content = `
+      <span class="card-badge nature">${item.type}</span>
+      ${item.stats ? `
+      <div class="card-stats">
+        <div class="stat-box"><div class="stat-label">FOR</div><div class="stat-value">${item.stats.strength}</div></div>
+        <div class="stat-box"><div class="stat-label">DES</div><div class="stat-value">${item.stats.dexterity}</div></div>
+        <div class="stat-box"><div class="stat-label">CON</div><div class="stat-value">${item.stats.constitution}</div></div>
+        <div class="stat-box"><div class="stat-label">INT</div><div class="stat-value">${item.stats.intelligence}</div></div>
+        <div class="stat-box"><div class="stat-label">SAB</div><div class="stat-value">${item.stats.wisdom}</div></div>
+        <div class="stat-box"><div class="stat-label">CAR</div><div class="stat-value">${item.stats.charisma}</div></div>
+      </div>` : ''}
+    `;
+        } else if (s === 'monster-stats') {
+            content = `
+      <div class="card-stats">
+        <div class="stat-box"><div class="stat-label">FOR</div><div class="stat-value">${item.strength}</div></div>
+        <div class="stat-box"><div class="stat-label">DES</div><div class="stat-value">${item.dexterity}</div></div>
+        <div class="stat-box"><div class="stat-label">CON</div><div class="stat-value">${item.constitution}</div></div>
+        <div class="stat-box"><div class="stat-label">INT</div><div class="stat-value">${item.intelligence}</div></div>
+        <div class="stat-box"><div class="stat-label">SAB</div><div class="stat-value">${item.wisdom}</div></div>
+        <div class="stat-box"><div class="stat-label">CAR</div><div class="stat-value">${item.charisma}</div></div>
+      </div>
+    `;
+        }
+
+        return `
+    <div class="card">
+      <span class="card-id">#${item.id}</span>
+      <h3 class="card-title">${item.name || `Stats #${item.id}`}</h3>
+      ${content}
+      <div class="card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openEdit(${item.id})">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete(${item.id}, '${(item.name || 'este registro').replace(/'/g, "\\'")}')">🗑️ Deletar</button>
+      </div>
+    </div>
+  `;
+    }
+
+    function renderEmpty() {
+        return `<div class="empty-state" style="grid-column:1/-1">
+    <div class="empty-icon">📜</div>
+    <p>Nenhum registro encontrado no grimório.</p>
+    <button class="btn btn-primary" onclick="openCreate()">+ Adicionar Primeiro Registro</button>
+  </div>`;
+    }
+
+    function renderPagination() {
+        if (totalPages <= 1) return '';
+        return `
+    <div class="pagination">
+      <button class="btn btn-secondary btn-sm" onclick="loadSection(${currentPage-1})" ${currentPage===0?'disabled':''}>◀ Anterior</button>
+      <span class="page-info">Página ${currentPage+1} de ${totalPages}</span>
+      <button class="btn btn-secondary btn-sm" onclick="loadSection(${currentPage+1})" ${currentPage>=totalPages-1?'disabled':''}>Próxima ▶</button>
+    </div>
+  `;
+    }
+
+    function renderError(status, msg) {
+        const icons = { 401: '🔐', 403: '⛔', 429: '⏳', 0: '🔌' };
+        const icon = icons[status] || '💀';
+        document.getElementById('main-content').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">${icon}</div>
+      <p style="color:var(--blood)">Erro ${status || ''}: ${msg || 'Erro desconhecido'}</p>
+      ${status === 401 ? '<p>Configure sua API Key no campo acima.</p>' : ''}
+      ${status === 403 ? '<p>A API Key foi enviada, mas é inválida ou está inativa. Gere uma nova chave ou confira se copiou corretamente.</p>' : ''}
+    </div>
+  `;
+    }
+
+    // ── SEARCH ──
+    async function doSearch() {
+        const val = document.getElementById('searchInput')?.value?.trim();
+        if (!val) return loadSection(0);
+        const endpoints = {
+            spells: `/v2/spells/search?name=${encodeURIComponent(val)}`,
+            classes: `/classes/search?name=${encodeURIComponent(val)}`,
+            subclasses: `/subclasses/search?name=${encodeURIComponent(val)}`,
+            monsters: `/monsters/search?type=${encodeURIComponent(val)}`,
+            'monster-stats': `/monster-stats/filter?minStrength=${encodeURIComponent(val)}`
+        };
+        try {
+            const res = await fetch(`${BASE_URL}${endpoints[currentSection]}&page=0&size=9`, { headers: getHeaders() });
+            const data = await res.json();
+            const items = data._embedded ? Object.values(data._embedded)[0] : [];
+            totalPages = data.page?.totalPages || 1;
+            document.getElementById('cardsGrid').innerHTML = items.length ? items.map(renderCard).join('') : renderEmpty();
+        } catch(e) { showToast('Erro na busca', 'error'); }
+    }
+
+    // ── FORMS ──
+    async function openCreate() {
+        editingId = null;
+        document.getElementById('modalTitle').textContent = '+ Novo Registro';
+        document.getElementById('modalBody').innerHTML = await buildForm(null);
+        document.getElementById('formModal').classList.add('open');
+    }
+
+    async function openEdit(id) {
+        editingId = id;
+        document.getElementById('modalTitle').textContent = '✏️ Editar Registro';
+        try {
+            const endpoint = getEndpoint(currentSection);
+            const res = await fetch(`${BASE_URL}${endpoint}/${id}`, { headers: getHeaders() });
+            const data = await res.json();
+            document.getElementById('modalBody').innerHTML = await buildForm(data);
+            document.getElementById('formModal').classList.add('open');
+        } catch(e) { showToast('Erro ao carregar dados', 'error'); }
+    }
+
+    async function buildForm(data) {
+        const v = data || {};
+        const s = currentSection;
+
+        if (s === 'spells') return `
+    <div class="form-group"><label class="form-label">Nome *</label>
+    <input class="form-control" id="f_name" value="${v.name||''}" placeholder="Ex: Bola de Fogo"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nível (0-9) *</label>
+      <input class="form-control" id="f_level" type="number" min="0" max="9" value="${v.level??''}"></div>
+      <div class="form-group"><label class="form-label">Escola *</label>
+      <select class="form-control" id="f_school">
+        ${['ABJURATION','CONJURATION','DIVINATION','ENCHANTMENT','EVOCATION','ILLUSION','NECROMANCY','TRANSMUTATION']
+            .map(s => `<option value="${s}" ${v.school===s?'selected':''}>${s}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Tempo de Conjuração *</label>
+      <input class="form-control" id="f_castingTime" value="${v.castingTime||''}" placeholder="Ex: 1 action"></div>
+      <div class="form-group"><label class="form-label">Alcance *</label>
+      <input class="form-control" id="f_range" value="${v.range||''}" placeholder="Ex: 150 feet, Self"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Componentes *</label>
+      <input class="form-control" id="f_components" value="${v.components||''}" placeholder="Ex: V, S, M"></div>
+      <div class="form-group"><label class="form-label">Duração *</label>
+      <input class="form-control" id="f_duration" value="${v.duration||''}" placeholder="Ex: Instantaneous"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Componentes Materiais</label>
+    <input class="form-control" id="f_materialComponents" value="${v.materialComponents||''}" placeholder="Ex: guano de morcego e enxofre"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Concentração?</label>
+      <select class="form-control" id="f_concentration">
+        <option value="false" ${v.concentration?'':'selected'}>Não</option>
+        <option value="true" ${v.concentration?'selected':''}>Sim</option>
+      </select></div>
+      <div class="form-group"><label class="form-label">Ritual?</label>
+      <select class="form-control" id="f_ritual">
+        <option value="false" ${v.ritual?'':'selected'}>Não</option>
+        <option value="true" ${v.ritual?'selected':''}>Sim</option>
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Tipo de Dano</label>
+      <input class="form-control" id="f_damageType" value="${v.damageType||''}" placeholder="Ex: Fire"></div>
+      <div class="form-group"><label class="form-label">Teste de Resistência</label>
+      <input class="form-control" id="f_savingThrow" value="${v.savingThrow||''}" placeholder="Ex: Dexterity"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Área de Efeito</label>
+    <input class="form-control" id="f_areaOfEffect" value="${v.areaOfEffect||''}" placeholder="Ex: 20-foot-radius sphere"></div>
+    <div class="form-group"><label class="form-label">Em níveis superiores</label>
+    <textarea class="form-control" id="f_higherLevel" placeholder="Como a magia escala...">${v.higherLevel||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Livro de Origem</label>
+    <input class="form-control" id="f_sourceBook" value="${v.sourceBook||''}" placeholder="Ex: Player's Handbook"></div>
+    <div class="form-group"><label class="form-label">Descrição *</label>
+    <textarea class="form-control" id="f_description" placeholder="Descreva a magia...">${v.description||''}</textarea></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitForm()">⚔️ Salvar</button>
+    </div>`;
+
+        if (s === 'classes') return `
+    <div class="form-group"><label class="form-label">Nome *</label>
+    <input class="form-control" id="f_name" value="${v.name||''}" placeholder="Ex: Mago"></div>
+    <div class="form-group"><label class="form-label">Dado de Vida *</label>
+    <select class="form-control" id="f_hitDie">
+      ${['D6','D8','D10','D12'].map(d => `<option value="${d}" ${v.hitDie===d?'selected':''}>${d}</option>`).join('')}
+    </select></div>
+    <div class="form-group"><label class="form-label">Descrição *</label>
+    <textarea class="form-control" id="f_description" placeholder="Descreva a classe...">${v.description||''}</textarea></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitForm()">⚔️ Salvar</button>
+    </div>`;
+
+        if (s === 'subclasses') {
+            let classOptions = '';
+            try {
+                const res = await fetch(`${BASE_URL}${getEndpoint('classes')}?size=100`, { headers: getHeaders() });
+                const d = await res.json();
+                const classes = d._embedded ? Object.values(d._embedded)[0] : [];
+                classOptions = classes.map(c => `<option value="${c.id}" ${v.characterClass?.id===c.id?'selected':''}>${c.name}</option>`).join('');
+            } catch(e) { classOptions = '<option>Erro ao carregar classes</option>'; }
+            return `
+      <div class="form-group"><label class="form-label">Nome *</label>
+      <input class="form-control" id="f_name" value="${v.name||''}" placeholder="Ex: Escola de Evocação"></div>
+      <div class="form-group"><label class="form-label">Classe Pai *</label>
+      <select class="form-control" id="f_classId"><option value="">Selecione uma classe...</option>${classOptions}</select></div>
+      <div class="form-group"><label class="form-label">Descrição *</label>
+      <textarea class="form-control" id="f_description" placeholder="Descreva a subclasse...">${v.description||''}</textarea></div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="submitForm()">⚔️ Salvar</button>
+      </div>`;
+        }
+
+        if (s === 'monsters') return `
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nome *</label>
+      <input class="form-control" id="f_name" value="${v.name||''}" placeholder="Ex: Goblin"></div>
+      <div class="form-group"><label class="form-label">Tipo *</label>
+      <input class="form-control" id="f_type" value="${v.type||''}" placeholder="Ex: Humanoide"></div>
+    </div>
+    <div style="font-family:'Cinzel',serif;font-size:0.8rem;color:var(--gold);margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:1px solid rgba(201,162,39,0.2);">⚔️ Atributos (1–30)</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Força</label>
+      <input class="form-control" id="f_str" type="number" min="1" max="30" value="${v.stats?.strength||10}"></div>
+      <div class="form-group"><label class="form-label">Destreza</label>
+      <input class="form-control" id="f_dex" type="number" min="1" max="30" value="${v.stats?.dexterity||10}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Constituição</label>
+      <input class="form-control" id="f_con" type="number" min="1" max="30" value="${v.stats?.constitution||10}"></div>
+      <div class="form-group"><label class="form-label">Inteligência</label>
+      <input class="form-control" id="f_int" type="number" min="1" max="30" value="${v.stats?.intelligence||10}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Sabedoria</label>
+      <input class="form-control" id="f_wis" type="number" min="1" max="30" value="${v.stats?.wisdom||10}"></div>
+      <div class="form-group"><label class="form-label">Carisma</label>
+      <input class="form-control" id="f_cha" type="number" min="1" max="30" value="${v.stats?.charisma||10}"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitForm()">⚔️ Salvar</button>
+    </div>`;
+
+        if (s === 'monster-stats') return `
+    <div style="font-family:'Cinzel',serif;font-size:0.8rem;color:var(--gold);margin-bottom:0.75rem">⚔️ Atributos (1–30)</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Força</label>
+      <input class="form-control" id="f_str" type="number" min="1" max="30" value="${v.strength||10}"></div>
+      <div class="form-group"><label class="form-label">Destreza</label>
+      <input class="form-control" id="f_dex" type="number" min="1" max="30" value="${v.dexterity||10}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Constituição</label>
+      <input class="form-control" id="f_con" type="number" min="1" max="30" value="${v.constitution||10}"></div>
+      <div class="form-group"><label class="form-label">Inteligência</label>
+      <input class="form-control" id="f_int" type="number" min="1" max="30" value="${v.intelligence||10}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Sabedoria</label>
+      <input class="form-control" id="f_wis" type="number" min="1" max="30" value="${v.wisdom||10}"></div>
+      <div class="form-group"><label class="form-label">Carisma</label>
+      <input class="form-control" id="f_cha" type="number" min="1" max="30" value="${v.charisma||10}"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitForm()">⚔️ Salvar</button>
+    </div>`;
+    }
+
+    // ── SUBMIT FORM ──
+    async function submitForm() {
+        const s = currentSection;
+        let body = {};
+
+        if (s === 'spells') {
+            body = {
+                name: document.getElementById('f_name').value,
+                level: parseInt(document.getElementById('f_level').value),
+                school: document.getElementById('f_school').value,
+                castingTime: document.getElementById('f_castingTime').value,
+                range: document.getElementById('f_range').value,
+                components: document.getElementById('f_components').value,
+                materialComponents: document.getElementById('f_materialComponents').value || null,
+                duration: document.getElementById('f_duration').value,
+                concentration: document.getElementById('f_concentration').value === 'true',
+                ritual: document.getElementById('f_ritual').value === 'true',
+                damageType: document.getElementById('f_damageType').value || null,
+                savingThrow: document.getElementById('f_savingThrow').value || null,
+                areaOfEffect: document.getElementById('f_areaOfEffect').value || null,
+                higherLevel: document.getElementById('f_higherLevel').value || null,
+                sourceBook: document.getElementById('f_sourceBook').value || null,
+                description: document.getElementById('f_description').value
+            };
+        } else if (s === 'classes') {
+            body = {
+                name: document.getElementById('f_name').value,
+                hitDie: document.getElementById('f_hitDie').value,
+                description: document.getElementById('f_description').value,
+                spells: []
+            };
+        } else if (s === 'subclasses') {
+            const classId = document.getElementById('f_classId').value;
+            if (!classId) return showToast('Selecione uma classe pai!', 'warning');
+            body = {
+                name: document.getElementById('f_name').value,
+                description: document.getElementById('f_description').value,
+                characterClass: { id: parseInt(classId) }
+            };
+        } else if (s === 'monsters') {
+            body = {
+                name: document.getElementById('f_name').value,
+                type: document.getElementById('f_type').value,
+                stats: {
+                    strength: parseInt(document.getElementById('f_str').value),
+                    dexterity: parseInt(document.getElementById('f_dex').value),
+                    constitution: parseInt(document.getElementById('f_con').value),
+                    intelligence: parseInt(document.getElementById('f_int').value),
+                    wisdom: parseInt(document.getElementById('f_wis').value),
+                    charisma: parseInt(document.getElementById('f_cha').value)
+                }
+            };
+        } else if (s === 'monster-stats') {
+            body = {
+                strength: parseInt(document.getElementById('f_str').value),
+                dexterity: parseInt(document.getElementById('f_dex').value),
+                constitution: parseInt(document.getElementById('f_con').value),
+                intelligence: parseInt(document.getElementById('f_int').value),
+                wisdom: parseInt(document.getElementById('f_wis').value),
+                charisma: parseInt(document.getElementById('f_cha').value)
+            };
+        }
+
+        const endpoint = `${BASE_URL}${getEndpoint(currentSection)}${editingId ? '/'+editingId : ''}`;
+        const method = editingId ? 'PUT' : 'POST';
+
+        try {
+            const res = await fetch(endpoint, { method, headers: getHeaders(), body: JSON.stringify(body) });
+            const data = await res.json();
+
+            if (res.status === 201 || res.status === 200) {
+                showToast(editingId ? '✏️ Registro atualizado!' : '✨ Registro criado!', 'success');
+                closeModal();
+                loadSection(currentPage);
+            } else if (res.status === 409) {
+                showToast(`⚠️ Conflito: ${data.message}`, 'warning');
+            } else if (res.status === 400) {
+                const msgs = data.fields ? Object.values(data.fields).join(', ') : data.message;
+                showToast(`❌ Dados inválidos: ${msgs}`, 'error');
+            } else {
+                showToast(`❌ Erro ${res.status}: ${data.message || 'Erro desconhecido'}`, 'error');
+            }
+        } catch(e) { showToast('Erro de conexão com a API', 'error'); }
+    }
+
+    // ── DELETE ──
+    function confirmDelete(id, name) {
+        document.getElementById('confirmText').textContent = `Tem certeza que deseja deletar "${name}"? Esta ação não pode ser desfeita.`;
+        document.getElementById('confirmBtn').onclick = () => deleteRecord(id);
+        document.getElementById('confirmModal').classList.add('open');
+    }
+
+    async function deleteRecord(id) {
+        closeConfirm();
+        try {
+            const res = await fetch(`${BASE_URL}${getEndpoint(currentSection)}/${id}`, { method: 'DELETE', headers: getHeaders() });
+            if (res.status === 204) {
+                showToast('🗑️ Registro deletado com sucesso!', 'success');
+                loadSection(currentPage);
+            } else {
+                const data = await res.json();
+                showToast(`❌ Erro: ${data.message}`, 'error');
+            }
+        } catch(e) { showToast('Erro ao deletar', 'error'); }
+    }
+
+    // ── MODAL CONTROLS ──
+    function closeModal() { document.getElementById('formModal').classList.remove('open'); editingId = null; }
+    function closeConfirm() { document.getElementById('confirmModal').classList.remove('open'); }
+
+    // Close on overlay click
+    document.getElementById('formModal').addEventListener('click', e => { if(e.target === e.currentTarget) closeModal(); });
+    document.getElementById('confirmModal').addEventListener('click', e => { if(e.target === e.currentTarget) closeConfirm(); });
+
+    // ── TOAST ──
+    function showToast(msg, type = 'success') {
+        const icons = { success: '✅', error: '❌', warning: '⚠️' };
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-text">${msg}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(20px)'; toast.style.transition = '0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+    }
+
+    // ── INIT ──
+    window.addEventListener('load', () => {
+        const saved = localStorage.getItem('dnd_api_key');
+        if (saved) document.getElementById('apiKeyInput').value = saved;
+        navigate('spells');
+    });
+</script>
+</body>
+</html>
