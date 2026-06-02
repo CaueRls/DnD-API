@@ -1,6 +1,8 @@
 package com.example.dungeons_dragons_api.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,14 +13,15 @@ public class IdempotencyRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "A chave de idempotência é obrigatória")
     @Column(unique = true, nullable = false)
     private String idempotencyKey;
 
-    // Guarda o corpo da resposta como texto JSON
-    @Column(columnDefinition = "TEXT")
+    @NotNull(message = "O corpo da resposta é obrigatório")
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String responseBody;
 
-    // Guarda o status HTTP da resposta original
+    @Column(nullable = false)
     private int responseStatus;
 
     private LocalDateTime createdAt;

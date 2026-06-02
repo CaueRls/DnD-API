@@ -1,6 +1,8 @@
 package com.example.dungeons_dragons_api.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,11 +13,13 @@ public class ApiKey {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "A chave da API é obrigatória")
     @Column(unique = true, nullable = false)
     private String keyValue;
 
+    @NotBlank(message = "O dono da chave é obrigatório")
     @Column(nullable = false)
-    private String owner; // nome do dono da chave
+    private String owner;
 
     private boolean active;
 
