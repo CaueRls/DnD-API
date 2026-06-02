@@ -1,29 +1,28 @@
 # ---------- Build stage ----------
-FROM maven:3.9-eclipse-temurin-25 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy build descriptors first for better cache
+# Copy Maven descriptors first for better Docker cache
 COPY pom.xml .
 COPY .mvn .mvn
-COPY mvnw .
-RUN chmod +x ./mvnw
+COPY mvnw mvnw
+COPY mvnw.cmd mvnw.cmd
 
-# Download deps (optional but speeds up rebuilds)
-RUN ./mvnw -q -DskipTests dependency:go-offline
+# Use Maven from the image to avoid Maven Wrapper download/permission issues on Render
+RUN mvn -q -DskipTests dependency:go-offline
 
-# Copy source and build
+# Copy source and build the application
 COPY src src
-RUN ./mvnw -DskipTests clean package
-
+RUN mvn -DskipTests clean package
 
 # ---------- Runtime stage ----------
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
 
-# Render sets PORT at runtime
+# Render provides PORT at runtime. Locally it falls back to 8080.
 ENV PORT=8080
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=$PORT -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
